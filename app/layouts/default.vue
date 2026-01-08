@@ -8,7 +8,7 @@
         </div>
         <div class="flex gap-4">
           <NuxtLink to="/" class="px-3 py-2 text-sm font-medium hover:text-navy">Home</NuxtLink>
-          <NuxtLink to="/" class="px-3 py-2 text-sm font-medium hover:text-navy">Mocktest</NuxtLink>
+          <NuxtLink to="/dashboard" class="px-3 py-2 text-sm font-medium hover:text-navy">Mocktest</NuxtLink>
           <NuxtLink to="/dashboard" class="px-3 py-2 text-sm font-medium hover:text-navy">Dashboard</NuxtLink>
         </div>
       </div>
