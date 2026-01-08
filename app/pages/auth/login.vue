@@ -29,7 +29,7 @@ const rememberMe = ref(false);
     </div>
 
     <div
-      class="z-10 w-[50rem] space-y-8 p-5 py-8 bg-white rounded-2xl border border-gray-100 shadow-xl login-container !xl:w-[40rem] relative"
+      class="z-10 w-full xl:w-[40rem] space-y-8 p-5 py-8 bg-white rounded-2xl border border-gray-100 shadow-xl login-container !xl:w-[40rem] relative"
     >
       <div class="text-center">
         <NuxtLink to="/" class="inline-flex mb-6 items-center gap-2 group">
@@ -60,7 +60,6 @@ const rememberMe = ref(false);
             >
             <div class="relative">
               <div
-                style="padding-left: 0.5rem; padding-top: 1.3rem"
                 class="flex pl-3 pointer-events-none absolute inset-y-0 left-4 items-center"
               >
                 <svg
@@ -82,7 +81,6 @@ const rememberMe = ref(false);
                 name="email"
                 type="email"
                 required
-                style="padding-left: 1.7rem"
                 class="block w-full p-4 placeholder-gray-400 border border-gray-300 rounded-lg appearance-none focus:outline-none focus:ring-navy focus:border-navy transition ease-in-out duration-150 sm:text-sm"
                 placeholder="Enter your email"
               />
@@ -97,7 +95,6 @@ const rememberMe = ref(false);
             >
             <div class="relative">
               <div
-                style="padding-left: 0.5rem; padding-top: 1.3rem"
                 class="flex pointer-events-none absolute inset-y-0 left-0 items-center"
               >
                 <svg
@@ -119,7 +116,6 @@ const rememberMe = ref(false);
                 name="password"
                 :type="showPassword ? 'text' : 'password'"
                 required
-                style="padding-left: 1.7rem"
                 class="block w-full p-4 placeholder-gray-400 border border-gray-300 rounded-lg appearance-none focus:outline-none focus:ring-navy focus:border-navy transition ease-in-out duration-150 sm:text-sm"
                 placeholder="••••••••"
               />
