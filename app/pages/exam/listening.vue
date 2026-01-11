@@ -213,7 +213,7 @@ onUnmounted(() => {
 <template>
   <NuxtLayout name="exam">
     <template #timer>
-      <div class="font-mono text-slate-700 font-bold">30:00</div>
+      <Timer :duration-minutes="30" />
     </template>
 
     <div class="flex flex-col h-screen w-full overflow-hidden bg-slate-50 relative">
