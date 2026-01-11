@@ -6,9 +6,9 @@
       </div>
       <div class="bg-navy-dark px-4 py-1 rounded text-xl font-mono tracking-widest font-bold">
         <slot name="timer" /> </div>
-      <button class="bg-red-500 hover:bg-red-600 px-4 py-1 rounded text-xs font-bold transition">
+      <NuxtLink to="/" class="bg-red-500 hover:bg-red-600 px-4 py-1 rounded text-xs font-bold transition">
         EXIT TEST
-      </button>
+      </NuxtLink>
     </header>
     <main class="flex-1 overflow-hidden relative">
       <slot />
