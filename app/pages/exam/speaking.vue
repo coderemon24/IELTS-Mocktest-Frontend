@@ -3,7 +3,10 @@ import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { gsap } from 'gsap'
 import { useRouter } from 'vue-router'
 
-// লেআউট ডিজেবল করে কাস্টম লেআউট ব্যবহার করা হচ্ছে
+import { useExamSystem } from '~/composables/useExamSystem'
+const { userAnswers, initExam } = useExamSystem()
+initExam('listening_part_1')
+
 definePageMeta({ layout: false })
 
 const router = useRouter()

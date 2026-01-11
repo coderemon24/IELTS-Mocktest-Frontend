@@ -4,7 +4,10 @@ import Chart from 'chart.js/auto'
 import { gsap } from 'gsap'
 import { useRouter } from 'vue-router'
 
-// ডুপ্লিকেট লেআউট এড়াতে এখানে false করে দিলাম, কারণ আমরা টেমপ্লেটে <NuxtLayout> ব্যবহার করছি
+import { useExamSystem } from '~/composables/useExamSystem'
+const { userAnswers, initExam } = useExamSystem()
+initExam('listening_part_1')
+
 definePageMeta({ layout: false })
 
 const router = useRouter()
