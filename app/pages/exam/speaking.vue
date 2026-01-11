@@ -3,9 +3,7 @@ import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { gsap } from 'gsap'
 import { useRouter } from 'vue-router'
 
-import { useExamSystem } from '~/composables/useExamSystem'
-const { userAnswers, initExam } = useExamSystem()
-initExam('listening_part_1')
+
 
 definePageMeta({ layout: false })
 
