@@ -17,9 +17,11 @@ const rightPane = ref<HTMLElement | null>(null)
 // Store User Answers
 const userAnswers = reactive<Record<string, any>>({})
 
+// Modal State
+const showSubmitModal = ref(false)
+
 let audioInterval: any = null
 let visualizerInterval: any = null
-// More bars for a smoother wave look
 const visualizerBars = ref<number[]>(new Array(40).fill(5)) 
 
 // --- Mock Data ---
@@ -78,6 +80,36 @@ const listeningParts = [
 const currentPartData = computed(() => listeningParts[currentStep.value])
 const isLastPart = computed(() => currentStep.value === listeningParts.length - 1)
 
+// --- Submit & Stats Logic ---
+
+const totalQuestions = computed(() => {
+  return listeningParts.reduce((acc, part) => acc + part.questions.length, 0)
+})
+
+const answeredCount = computed(() => {
+  return Object.values(userAnswers).filter(val => val !== '' && val !== null && val !== undefined).length
+})
+
+const missingCount = computed(() => {
+  return totalQuestions.value - answeredCount.value
+})
+
+const handleNextOrSubmit = () => {
+  if (isLastPart.value) {
+    pauseAudio()
+    showSubmitModal.value = true
+  } else {
+    nextPart()
+  }
+}
+
+const confirmSubmit = () => {
+  // Logic for API submission goes here
+  console.log('Final Answers:', userAnswers)
+  showSubmitModal.value = false
+  router.push('/') 
+}
+
 // --- Helper: Format Time ---
 const formatTime = (seconds: number) => {
   const m = Math.floor(seconds / 60).toString().padStart(2, '0')
@@ -105,7 +137,6 @@ const playAudio = () => {
   }, 1000)
 
   visualizerInterval = setInterval(() => {
-    // Smoother animation math
     visualizerBars.value = visualizerBars.value.map(() => Math.max(10, Math.random() * 90))
   }, 100)
 }
@@ -129,29 +160,24 @@ const nextPart = () => {
   audioCurrentTime.value = 0
   audioProgress.value = 0
   
-  // Animation Out
   if (leftPane.value && rightPane.value) {
-     gsap.to([leftPane.value, rightPane.value], { 
-       opacity: 0, 
-       y: -10, 
-       duration: 0.3, 
-       ease: 'power2.in',
-       onComplete: () => {
-          // Logic Change
+      gsap.to([leftPane.value, rightPane.value], { 
+        opacity: 0, 
+        y: -10, 
+        duration: 0.3, 
+        ease: 'power2.in',
+        onComplete: () => {
           if (currentStep.value < listeningParts.length - 1) {
             currentStep.value++
-            // Animation In
             nextTick(() => {
-               gsap.fromTo([leftPane.value, rightPane.value], 
-                 { y: 20, opacity: 0 },
-                 { y: 0, opacity: 1, duration: 0.5, stagger: 0.1, ease: 'power3.out' }
-               )
+                gsap.fromTo([leftPane.value, rightPane.value], 
+                  { y: 20, opacity: 0 },
+                  { y: 0, opacity: 1, duration: 0.5, stagger: 0.1, ease: 'power3.out' }
+                )
             })
-          } else {
-            router.push('/')
           }
-       }
-     })
+        }
+      })
   }
 }
 
@@ -373,7 +399,7 @@ onUnmounted(() => {
                     <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/>
                   </svg>
                   <svg v-else class="w-6 h-6 fill-current ml-1" viewBox="0 0 24 24">
-                     <path d="M8 5v14l11-7z"/>
+                      <path d="M8 5v14l11-7z"/>
                   </svg>
                 </button>
 
@@ -420,7 +446,7 @@ onUnmounted(() => {
             </button>
             
             <button 
-                @click="nextPart"
+                @click="handleNextOrSubmit" 
                 class="px-8 py-2.5 rounded-lg font-bold shadow-lg shadow-teal-500/30 transition-all duration-200 flex items-center gap-2 transform hover:-translate-y-0.5 active:translate-y-0 text-sm text-white"
                 :class="isLastPart ? 'bg-slate-800 hover:bg-slate-900' : 'bg-teal-600 hover:bg-teal-700'"
             >
@@ -433,6 +459,69 @@ onUnmounted(() => {
       </div>
 
     </div>
+
+    <Teleport to="body">
+      <Transition 
+        enter-active-class="transition duration-200 ease-out"
+        enter-from-class="opacity-0"
+        enter-to-class="opacity-100"
+        leave-active-class="transition duration-150 ease-in"
+        leave-from-class="opacity-100"
+        leave-to-class="opacity-0"
+      >
+        <div v-if="showSubmitModal" class="fixed inset-0 z-[100] flex items-center justify-center px-4">
+          
+          <div @click="showSubmitModal = false" class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"></div>
+
+          <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all scale-100">
+            
+            <div class="bg-slate-50 px-6 py-4 border-b border-slate-100 flex justify-between items-center">
+              <h3 class="font-bold text-slate-700">Confirm Submission</h3>
+              <button @click="showSubmitModal = false" class="text-slate-400 hover:text-slate-600 transition-colors">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+              </button>
+            </div>
+
+            <div class="p-6 md:p-8 text-center">
+              <div class="w-16 h-16 bg-teal-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg class="w-8 h-8 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+              </div>
+              
+              <h2 class="text-xl font-bold text-slate-800 mb-2">Ready to finish?</h2>
+              <p class="text-slate-500 text-sm mb-6">You are about to submit your exam. Please check your progress summary below.</p>
+
+              <div class="grid grid-cols-2 gap-4 mb-2">
+                <div class="p-3 bg-teal-50 border border-teal-100 rounded-xl">
+                  <span class="block text-2xl font-bold text-teal-700">{{ answeredCount }}</span>
+                  <span class="text-[10px] font-bold text-teal-600/60 uppercase tracking-wider">Answered</span>
+                </div>
+                <div class="p-3 bg-red-50 border border-red-100 rounded-xl">
+                  <span class="block text-2xl font-bold text-red-500">{{ missingCount }}</span>
+                  <span class="text-[10px] font-bold text-red-400/60 uppercase tracking-wider">Missing</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="p-4 bg-slate-50 border-t border-slate-100 flex gap-3">
+              <button 
+                @click="showSubmitModal = false"
+                class="flex-1 py-2.5 px-4 bg-white border border-slate-200 text-slate-600 font-bold rounded-xl hover:bg-slate-100 hover:text-slate-800 transition-colors text-sm"
+              >
+                Review Answers
+              </button>
+              <button 
+                @click="confirmSubmit"
+                class="flex-1 py-2.5 px-4 bg-teal-600 text-white font-bold rounded-xl hover:bg-teal-700 shadow-lg shadow-teal-500/20 transition-all text-sm"
+              >
+                Submit Exam
+              </button>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
   </NuxtLayout>
 </template>
 
