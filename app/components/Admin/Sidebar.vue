@@ -3,7 +3,7 @@ const props = defineProps(["isOpen", "activeSubMenu"]);
 const emit = defineEmits(["toggleSubMenu"]);
 
 const menuItems = [
-  { name: "Dashboard", icon: "home", route: "/admin/dashboard" },
+  { name: "Dashboard", icon: "home", route: "/admin" },
   { name: "Exams", icon: "document-text", route: "/admin/exams" },
   { name: "Students", icon: "users", route: "/admin/students" },
   { name: "Results", icon: "chart-bar", route: "/admin/results" },
@@ -172,7 +172,8 @@ const getIcon = (name: string) =>
         <div v-if="!item.subMenus">
           <NuxtLink
             :to="item.route"
-            class="flex px-6 py-3 text-slate-300 transition-colors relative items-center hover:text-white hover:bg-white/10 group"
+            class="flex px-6 py-3 text-slate-300 transition-colors relative 
+            items-center hover:text-white hover:bg-white/10 group"
             active-class="text-mint bg-white/10 border-r-4 border-mint"
           >
             <component
@@ -221,7 +222,9 @@ const getIcon = (name: string) =>
 
             <div
               v-if="!isOpen"
-              class="absolute left-16 z-50 px-2 py-1 text-white text-xs whitespace-nowrap bg-slate-800 border border-white/10 rounded opacity-0 pointer-events-none group-hover:opacity-100 transition shadow-lg"
+              class="absolute left-16 z-50 px-2 py-1 text-white text-xs
+               whitespace-nowrap bg-slate-800 border border-white/10 
+               rounded opacity-0 pointer-events-none group-hover:opacity-100 transition shadow-lg"
             >
               {{ item.name }}
             </div>
