@@ -6,6 +6,7 @@ import gsap from 'gsap'
 const email = ref('')
 const password = ref('')
 const isLoading = ref(false)
+const showPassword = ref(false) // পাসওয়ার্ড দেখানোর স্টেট
 
 const handleLogin = () => {
   isLoading.value = true
@@ -114,11 +115,24 @@ onMounted(() => {
                 </span>
                 <input 
                   v-model="password" 
-                  type="password" 
-                  class="w-full pl-12 pr-4 py-3 bg-offwhite border border-gray-200 rounded-xl focus:outline-none focus:border-navy focus:ring-1 focus:ring-navy transition text-slate-700"
+                  :type="showPassword ? 'text' : 'password'" 
+                  class="w-full pl-12 pr-12 py-3 bg-offwhite border border-gray-200 rounded-xl focus:outline-none focus:border-navy focus:ring-1 focus:ring-navy transition text-slate-700"
                   placeholder="••••••••"
                   required
                 >
+                <button 
+                  type="button"
+                  @click="showPassword = !showPassword"
+                  class="absolute right-4 top-3.5 text-slate-400 hover:text-navy transition"
+                >
+                  <svg v-if="!showPassword" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  </svg>
+                  <svg v-else class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88L4.573 4.574m14.854 14.854L14.12 14.12M17.657 16.657L13.414 12.414m6.332-6.332a9.99 9.99 0 011.542 3.918c-.337.959-.83 1.848-1.455 2.627M12 5c1.173 0 2.29.204 3.322.576" />
+                  </svg>
+                </button>
               </div>
             </div>
 
