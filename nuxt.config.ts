@@ -3,8 +3,15 @@ export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
   devtools: { enabled: true },
   
+  runtimeConfig: {
+    public: {
+      apiBase: "http://mocktest.test/api/v1"
+    }
+  },
+  
   modules: [
     '@nuxtjs/tailwindcss',
+    '@pinia/nuxt',
   ],
 
   tailwindcss: {

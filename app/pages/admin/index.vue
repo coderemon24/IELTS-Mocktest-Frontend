@@ -1,6 +1,8 @@
 <script setup>
+
 definePageMeta({
-  layout: 'admin'
+  layout: 'admin',
+  middleware: 'admin-auth',
 })
 
 // Stats data - More compact and informative

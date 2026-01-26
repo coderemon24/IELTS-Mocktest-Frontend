@@ -1,24 +1,46 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import gsap from 'gsap'
 
-// Login State
+definePageMeta({
+  middleware: 'admin-auth'
+})
+
+// State Management
 const email = ref('')
 const password = ref('')
 const isLoading = ref(false)
-const showPassword = ref(false) // পাসওয়ার্ড দেখানোর স্টেট
+const showPassword = ref(false) 
+// Router
+const router = useRouter()
 
-const handleLogin = () => {
+// Access global axios and cookies
+const auth = useAuthStore()
+const { $axios } = useNuxtApp()
+
+const handleLogin = async () => {
+  if (!email.value || !password.value) return
+  
   isLoading.value = true
-  setTimeout(() => {
+  try {
+    const response = await $axios.post('/admin/login', {
+      email: email.value,
+      password: password.value
+    })
+
+    if (response.data.access_token) {
+      auth.login(response.data.access_token)
+      navigateTo('/admin')
+    }
+  } catch (error: any) {
+    console.error('Auth Error:', error.response?.data || error.message)
+    alert(error.response?.data?.message || 'Authentication failed')
+  } finally {
     isLoading.value = false
-    // Redirect logic here
-    // navigateTo('/admin/dashboard')
-  }, 1500)
+  }
 }
 
 onMounted(() => {
-  // Entrance Animation
   gsap.from('.login-card', {
     y: 30,
     opacity: 0,
@@ -26,7 +48,6 @@ onMounted(() => {
     ease: 'power3.out'
   })
 
-  // Floating Background Elements
   const shapes = document.querySelectorAll('.floating-shape')
   shapes.forEach((shape) => {
     gsap.to(shape, {
