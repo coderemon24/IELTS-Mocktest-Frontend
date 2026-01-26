@@ -6,6 +6,32 @@ export default defineNuxtConfig({
   modules: [
     '@nuxtjs/tailwindcss',
   ],
+
+  tailwindcss: {
+    config: {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            navy: {
+              DEFAULT: '#0F172A',
+              light: '#1E293B',
+              dark: '#020617',
+            },
+            mint: {
+              DEFAULT: '#2DD4BF',
+              dim: '#99F6E4',
+            },
+            orange: {
+              DEFAULT: '#F97316',
+              hover: '#EA580C',
+            },
+            offwhite: '#F8FAFC',
+          }
+        }
+      }
+    }
+  },
   
   app: {
     head: {
@@ -18,6 +44,5 @@ export default defineNuxtConfig({
         { rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' }
       ]
     }
-  }
-  
+  },
 })
