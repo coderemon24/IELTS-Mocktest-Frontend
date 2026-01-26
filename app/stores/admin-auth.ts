@@ -11,11 +11,19 @@ export const useAuthStore = defineStore('admin-auth', {
       this.loggedIn = true
       useCookie('auth_token').value = token
     },
-    logout() {
-      this.token = null
-      this.loggedIn = false
-      useCookie('auth_token').value = null
-      return navigateTo('/admin/login')
+    async logout() {
+      const { $axios } = useNuxtApp()
+      
+      try {
+        await $axios.post('/admin/logout') 
+      } catch (error) {
+        console.error("Server logout failed", error)
+      } finally {
+        this.token = null
+        this.loggedIn = false
+        useCookie('auth_token').value = null
+        navigateTo('/admin/login')
+      }
     }
   }
 })

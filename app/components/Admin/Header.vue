@@ -1,6 +1,12 @@
 <script setup lang="ts">
 const props = defineProps(['isDark', 'isFullScreen', 'showNotifications', 'showProfileMenu'])
 const emit = defineEmits(['toggleSidebar', 'toggleTheme', 'toggleFullScreen', 'toggleNotifications', 'toggleProfileMenu'])
+
+const auth = useAuthStore()
+const handleLogout = () => {
+  auth.logout()
+}
+
 </script>
 
 <template>
@@ -46,7 +52,7 @@ const emit = defineEmits(['toggleSidebar', 'toggleTheme', 'toggleFullScreen', 't
            <div class="p-2 space-y-1">
              <a href="#" class="flex items-center gap-2 px-4 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-slate-700 rounded-lg">My Profile</a>
              <div class="h-px bg-gray-100 dark:bg-slate-700 my-1"></div>
-             <a href="#" class="flex items-center gap-2 px-4 py-2 text-sm text-red-500 hover:bg-red-50 rounded-lg">Logout</a>
+             <a href="#" @click.prevent="handleLogout" class="flex items-center gap-2 px-4 py-2 text-sm text-red-500 hover:bg-red-50 rounded-lg">Logout</a>
            </div>
         </div>
       </div>
