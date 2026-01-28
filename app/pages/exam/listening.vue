@@ -3,8 +3,6 @@ import { ref, computed, onMounted, onUnmounted, nextTick, reactive } from 'vue'
 import { gsap } from 'gsap'
 import { useRouter } from 'vue-router'
 
-
-
 definePageMeta({ layout: false })
 
 const router = useRouter()
@@ -26,56 +24,64 @@ let audioInterval: any = null
 let visualizerInterval: any = null
 const visualizerBars = ref<number[]>(new Array(40).fill(5)) 
 
-// --- Mock Data ---
+// --- Mock Data (Updated: 10 Questions per part, Fill in blank style) ---
 const listeningParts = [
   {
     id: 1,
-    title: 'Part 1: Social Context',
-    instruction: 'Listen to the conversation between a student and a housing officer. Complete the form below.',
-    type: 'form-completion',
+    title: 'Part 1: Travel Arrangements',
+    instruction: 'Complete the notes below using NO MORE THAN TWO WORDS AND/OR A NUMBER.',
+    type: 'fill-blank',
     questions: [
-      { id: 'q1', label: 'Student Name', type: 'text', placeholder: 'Enter full name' },
-      { id: 'q2', label: 'Accommodation Type', type: 'select', options: ['Dormitory', 'Shared Apartment', 'Private Studio'] },
-      { id: 'q3', label: 'Maximum Budget ($)', type: 'text', placeholder: 'e.g., 500' },
-      { id: 'q4', label: 'Move-in Date', type: 'date', placeholder: '' }
+      { id: 'q1', text: 'The customer wants to book a flight to __________.', before: true },
+      { id: 'q2', text: 'The preferred departure date is __________.', before: true },
+      { id: 'q3', text: 'He would like to request a __________ meal on the flight.', before: true },
+      { id: 'q4', text: 'The maximum baggage allowance is __________ kg per person.', before: true },
+      { id: 'q5', text: 'The hotel must be close to the __________ center.', before: true },
+      { id: 'q6', text: 'He plans to rent a __________ for three days.', before: true },
+      { id: 'q7', text: 'The total cost of the package is $__________.', before: true },
+      { id: 'q8', text: 'A deposit of __________% is required immediately.', before: true },
+      { id: 'q9', text: 'The customer\'s phone number is __________.', before: true },
+      { id: 'q10', text: 'He heard about the agency through a __________.', before: true }
     ],
-    duration: '03:00'
+    duration: '05:00'
   },
   {
     id: 2,
-    title: 'Part 2: General Interest',
-    instruction: 'Listen to the radio broadcast about a local charity event. Choose the correct letter, A, B, or C.',
-    type: 'mcq',
+    title: 'Part 2: Museum Tour',
+    instruction: 'Listen to the guide. Complete the sentences below.',
+    type: 'fill-blank',
     questions: [
-      { 
-        id: 'q5', 
-        text: 'What is the main purpose of the charity event?', 
-        options: ['A. To raise money for a hospital', 'B. To clean up the local park', 'C. To support local artists'] 
-      },
-      { 
-        id: 'q6', 
-        text: 'When will the event take place?', 
-        options: ['A. Next Saturday', 'B. Next Sunday', 'C. The following weekend'] 
-      },
-      { 
-        id: 'q7', 
-        text: 'Volunteers should bring their own...', 
-        options: ['A. Lunch', 'B. Tools', 'C. Water bottles'] 
-      }
+      { id: 'q11', text: 'The museum was originally built in the year __________.', before: true },
+      { id: 'q12', text: 'Visitors are not allowed to take __________ inside the main hall.', before: true },
+      { id: 'q13', text: 'The most famous exhibit is the __________ from the 18th century.', before: true },
+      { id: 'q14', text: 'The guided tour usually lasts for __________ minutes.', before: true },
+      { id: 'q15', text: 'You can buy souvenirs in the shop located on the __________ floor.', before: true },
+      { id: 'q16', text: 'The museum is closed on __________ for maintenance.', before: true },
+      { id: 'q17', text: 'Tickets for students cost $__________.', before: true },
+      { id: 'q18', text: 'The special exhibition focuses on __________ history.', before: true },
+      { id: 'q19', text: 'Group bookings require at least __________ days notice.', before: true },
+      { id: 'q20', text: 'Please leave your __________ in the locker room.', before: true }
     ],
-    duration: '04:30'
+    duration: '05:30'
   },
   {
     id: 3,
-    title: 'Part 3: Academic Discussion',
-    instruction: 'Listen to two students discussing their research project. Complete the sentences using NO MORE THAN TWO WORDS.',
+    title: 'Part 3: Biology Lecture',
+    instruction: 'Complete the summary using NO MORE THAN ONE WORD.',
     type: 'fill-blank',
     questions: [
-      { id: 'q8', text: 'The students decided to focus on the impact of __________ on urban planning.', before: true },
-      { id: 'q9', text: 'They were surprised to find that __________ was the biggest factor.', before: true },
-      { id: 'q10', text: 'The professor suggested they interview at least __________ people.', before: true }
+      { id: 'q21', text: 'The professor is discussing the behavior of __________ in the wild.', before: true },
+      { id: 'q22', text: 'These animals are primarily active during the __________.', before: true },
+      { id: 'q23', text: 'Their main source of food is __________ found in the river.', before: true },
+      { id: 'q24', text: 'Climate change has reduced their population by __________%.', before: true },
+      { id: 'q25', text: 'Researchers use __________ to track their movements.', before: true },
+      { id: 'q26', text: 'The animals communicate using a specific type of __________.', before: true },
+      { id: 'q27', text: 'Breeding usually occurs in the month of __________.', before: true },
+      { id: 'q28', text: 'The young stay with their mothers for __________ years.', before: true },
+      { id: 'q29', text: 'The biggest threat to their habitat is __________.', before: true },
+      { id: 'q30', text: 'Conservation efforts are currently funded by the __________.', before: true }
     ],
-    duration: '05:15'
+    duration: '06:00'
   }
 ]
 
@@ -243,86 +249,37 @@ onUnmounted(() => {
               </div>
             </div>
 
-            <div v-if="currentPartData.type === 'form-completion'" class="animate-fade-in">
-              <div class="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
-                <div class="bg-slate-50 px-6 py-3 border-b border-slate-200 flex justify-between items-center">
-                   <h3 class="font-bold text-slate-600 uppercase text-xs tracking-wider">Application Form</h3>
-                   <div class="w-2 h-2 bg-red-400 rounded-full animate-pulse"></div>
-                </div>
-                <div class="p-6 md:p-8 space-y-6">
-                  <div v-for="(q, idx) in currentPartData.questions" :key="q.id" class="grid md:grid-cols-3 gap-4 items-center">
-                    <label class="md:text-right font-semibold text-slate-600 text-sm">{{ q.label }}</label>
-                    <div class="md:col-span-2">
-                       <input 
-                         v-if="q.type === 'text' || q.type === 'date'"
-                         v-model="userAnswers[q.id]"
-                         :type="q.type"
-                         :placeholder="q.placeholder"
-                         class="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-all text-sm font-medium text-slate-900 placeholder:text-slate-400"
-                       />
-                       <div v-else-if="q.type === 'select'" class="relative">
-                         <select 
-                           v-model="userAnswers[q.id]"
-                           class="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none text-sm font-medium text-slate-900 appearance-none cursor-pointer"
-                         >
-                           <option value="" disabled selected>Select an option</option>
-                           <option v-for="opt in q.options" :key="opt" :value="opt">{{ opt }}</option>
-                         </select>
-                         <svg class="w-4 h-4 absolute right-3 top-3 text-slate-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
-                       </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div v-if="currentPartData.type === 'mcq'" class="space-y-8 animate-fade-in">
-              <div v-for="(q, idx) in currentPartData.questions" :key="q.id" class="p-6 bg-white border border-slate-200 rounded-xl hover:border-teal-200 hover:shadow-md transition-all duration-300">
-                <div class="flex gap-4 mb-4">
-                  <span class="flex-shrink-0 w-7 h-7 flex items-center justify-center bg-slate-800 text-white font-bold rounded text-sm">
-                    {{ idx + 5 }}
-                  </span>
-                  <p class="font-bold text-slate-800 text-lg leading-snug">
-                    {{ q.text }}
-                  </p>
-                </div>
-                <div class="pl-11 space-y-3">
-                  <label v-for="opt in q.options" :key="opt" 
-                    class="group flex items-center p-3 border rounded-lg cursor-pointer transition-all duration-200"
-                    :class="userAnswers[q.id] === opt 
-                      ? 'border-teal-500 bg-teal-50/50' 
-                      : 'border-slate-200 hover:border-teal-300 hover:bg-slate-50'"
-                  >
-                    <div class="relative flex items-center justify-center flex-shrink-0">
-                      <input type="radio" :name="q.id" :value="opt" v-model="userAnswers[q.id]" class="peer appearance-none w-5 h-5 border-2 border-slate-300 rounded-full checked:border-teal-600 checked:bg-teal-600 transition-colors" />
-                      <div class="absolute w-2 h-2 bg-white rounded-full opacity-0 peer-checked:opacity-100 scale-0 peer-checked:scale-100 transition-transform"></div>
-                    </div>
-                    <span class="ml-3 text-sm font-medium text-slate-600 group-hover:text-slate-900" :class="{'text-teal-900 font-bold': userAnswers[q.id] === opt}">
-                      {{ opt }}
-                    </span>
-                  </label>
-                </div>
-              </div>
-            </div>
-
             <div v-if="currentPartData.type === 'fill-blank'" class="animate-fade-in">
-               <div class="bg-gradient-to-b from-teal-50/50 to-white p-8 rounded-2xl border border-teal-100">
+               <div class="bg-gradient-to-b from-teal-50/50 to-white p-6 md:p-8 rounded-2xl border border-teal-100 shadow-sm">
                  <ul class="space-y-6">
                    <li v-for="(q, idx) in currentPartData.questions" :key="q.id" class="flex gap-4 text-lg text-slate-700 leading-relaxed items-baseline">
-                     <span class="flex-shrink-0 w-8 h-8 flex items-center justify-center bg-white border border-teal-200 text-teal-700 font-bold rounded-full text-sm shadow-sm">
-                       {{ idx + 8 }}
+                     
+                     <span class="flex-shrink-0 w-8 h-8 flex items-center justify-center bg-white border border-teal-200 text-teal-700 font-bold rounded-full text-sm shadow-sm select-none">
+                       {{ (currentStep * 10) + idx + 1 }}
                      </span>
-                     <div class="font-serif">
-                       {{ q.text.split('__________')[0] }}
-                       <span class="inline-block relative group mx-1">
-                         <input 
-                           type="text" 
-                           v-model="userAnswers[q.id]"
-                           class="w-40 px-1 py-0 bg-transparent border-b-2 border-slate-400 text-center font-bold text-teal-700 focus:border-teal-600 focus:bg-teal-50 outline-none transition-all placeholder:font-normal placeholder:text-slate-300 text-lg"
-                           placeholder="answer"
-                         />
-                       </span>
-                       {{ q.text.split('__________')[1] }}
+
+                     <div class="font-serif w-full">
+                        <span v-if="q.text.includes('__________')">
+                            {{ q.text.split('__________')[0] }}
+                            <span class="inline-block relative group mx-1 align-baseline">
+                            <input 
+                                type="text" 
+                                v-model="userAnswers[q.id]"
+                                class="w-40 px-2 py-0.5 bg-transparent border-b-2 border-slate-400 text-center font-bold text-teal-700 focus:border-teal-600 focus:bg-teal-50 outline-none transition-all placeholder:font-normal placeholder:text-slate-300 text-lg"
+                                placeholder="answer"
+                            />
+                            </span>
+                            {{ q.text.split('__________')[1] }}
+                        </span>
+                        
+                        <span v-else>
+                            {{ q.text }}
+                             <input 
+                                type="text" 
+                                v-model="userAnswers[q.id]"
+                                class="w-40 px-2 py-0.5 bg-transparent border-b-2 border-slate-400 text-center font-bold text-teal-700 focus:border-teal-600 focus:bg-teal-50 outline-none transition-all placeholder:font-normal placeholder:text-slate-300 text-lg"
+                            />
+                        </span>
                      </div>
                    </li>
                  </ul>
@@ -420,15 +377,15 @@ onUnmounted(() => {
             <template v-for="(part, idx) in listeningParts" :key="part.id">
                 <div class="flex flex-col items-center">
                     <div 
-                        class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-all duration-300"
+                        class="min-w-[36px] h-9 px-3 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-all duration-300"
                         :class="[
-                            currentStep === idx ? 'bg-teal-600 border-teal-600 text-white scale-110 shadow-lg' : 
+                            currentStep === idx ? 'bg-teal-600 border-teal-600 text-white scale-105 shadow-lg' : 
                             currentStep > idx ? 'bg-teal-50 border-teal-200 text-teal-600' : 
                             'bg-white border-slate-200 text-slate-300'
                         ]"
                     >
                         <span v-if="currentStep > idx">✓</span>
-                        <span v-else>{{ idx + 1 }}</span>
+                        <span v-else>{{ (idx * 10) + 1 }}-{{ (idx + 1) * 10 }}</span>
                     </div>
                 </div>
                 <div v-if="idx < listeningParts.length - 1" 
