@@ -7,6 +7,7 @@ const isFullScreen = ref(false)
 const showProfileMenu = ref(false)
 const showNotifications = ref(false)
 const activeSubMenu = ref<string | null>(null)
+const activeNestedSubMenu = ref<string | null>(null)
 
 const toggleTheme = () => {
   isDark.value = !isDark.value
@@ -27,6 +28,16 @@ const closeDropdowns = () => {
   showProfileMenu.value = false
   showNotifications.value = false
 }
+
+const toggleSubMenu = (name: string) => {
+  const isClosing = activeSubMenu.value === name
+  activeSubMenu.value = isClosing ? null : name
+  activeNestedSubMenu.value = null
+}
+
+const toggleNestedSubMenu = (name: string) => {
+  activeNestedSubMenu.value = activeNestedSubMenu.value === name ? null : name
+}
 </script>
 
 <template>
@@ -36,7 +47,9 @@ const closeDropdowns = () => {
       <AdminSidebar 
         :isOpen="isSidebarOpen" 
         :activeSubMenu="activeSubMenu"
-        @toggleSubMenu="(name) => activeSubMenu = activeSubMenu === name ? null : name"
+        :activeNestedSubMenu="activeNestedSubMenu"
+        @toggleSubMenu="toggleSubMenu"
+        @toggleNestedSubMenu="toggleNestedSubMenu"
       />
 
       <div class="flex-1 flex flex-col min-w-0" @click="closeDropdowns">

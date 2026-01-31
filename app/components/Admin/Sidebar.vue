@@ -1,22 +1,59 @@
 <script setup lang="ts">
-const props = defineProps(["isOpen", "activeSubMenu"]);
-const emit = defineEmits(["toggleSubMenu"]);
+type SubMenuItem = {
+  name: string
+  route?: string
+  subMenus?: SubMenuItem[]
+}
 
-const menuItems = [
-  { name: "Dashboard", icon: "home", route: "/admin" },
-  { name: "Exams", icon: "document-text", route: "/admin/exams" },
-  { name: "Students", icon: "users", route: "/admin/students" },
-  { name: "Results", icon: "chart-bar", route: "/admin/results" },
+type MenuItem = {
+  name: string
+  icon: string
+  route?: string
+  subMenus?: SubMenuItem[]
+}
+
+defineProps<{
+  isOpen: boolean
+  activeSubMenu: string | null
+  activeNestedSubMenu: string | null
+}>()
+
+const emit = defineEmits<{
+  (e: 'toggleSubMenu', name: string): void
+  (e: 'toggleNestedSubMenu', name: string): void
+}>()
+
+const menuItems: MenuItem[] = [
+  { name: 'Dashboard', icon: 'home', route: '/admin' },
   {
-    name: "Users",
-    icon: "user-group",
+    name: 'Exams',
+    icon: 'document-text',
     subMenus: [
-      { name: "All Users", route: "/admin/users" },
-      { name: "Roles", route: "/admin/users/roles" },
+      {
+        name: 'Listening',
+        subMenus: [
+          { name: 'Listening Exams', route: '/admin/exams/listening' },
+          { name: 'Exam Sections', route: '/admin/exams/listening/sections' },
+          { name: 'Questions', route: '/admin/exams/listening/questions' },
+        ],
+      },
+      { name: 'Writing', route: '/admin/exams/writing' },
+      { name: 'Speaking', route: '/admin/exams/speaking' },
+      { name: 'Reading', route: '/admin/exams/reading' },
     ],
   },
-  { name: "Settings", icon: "cog", route: "/admin/settings" },
-];
+  { name: 'Students', icon: 'users', route: '/admin/students' },
+  { name: 'Results', icon: 'chart-bar', route: '/admin/results' },
+  {
+    name: 'Users',
+    icon: 'user-group',
+    subMenus: [
+      { name: 'All Users', route: '/admin/users' },
+      { name: 'Roles', route: '/admin/users/roles' },
+    ],
+  },
+  { name: 'Settings', icon: 'cog', route: '/admin/settings' },
+]
 
 import { h } from "vue";
 const Icons = {
@@ -142,6 +179,8 @@ const Icons = {
 };
 const getIcon = (name: string) =>
   Icons[name as keyof typeof Icons] || Icons.home;
+
+const nestedKey = (parent: string, child: string) => `${parent}::${child}`
 </script>
 
 <template>
@@ -234,15 +273,57 @@ const getIcon = (name: string) =>
             v-if="isOpen && activeSubMenu === item.name"
             class="py-2 bg-navy-dark dark:bg-slate-900/50"
           >
-            <NuxtLink
-              v-for="sub in item.subMenus"
-              :key="sub.name"
-              :to="sub.route"
-              class="flex pl-14 pr-6 py-2 text-sm text-slate-400 whitespace-nowrap items-center hover:text-mint hover:bg-white/5 transition"
-            >
-              <span class="w-1.5 h-1.5 mr-2 bg-current rounded-full"></span>
-              {{ sub.name }}
-            </NuxtLink>
+            <template v-for="sub in item.subMenus" :key="sub.name">
+              <NuxtLink
+                v-if="!sub.subMenus"
+                :to="sub.route"
+                class="flex pl-14 pr-6 py-2 text-sm text-slate-400 whitespace-nowrap items-center hover:text-mint hover:bg-white/5 transition"
+              >
+                <span class="w-1.5 h-1.5 mr-2 bg-current rounded-full"></span>
+                {{ sub.name }}
+              </NuxtLink>
+
+              <div v-else class="select-none">
+                <button
+                  class="flex w-full pl-14 pr-6 py-2 text-sm text-slate-300 whitespace-nowrap items-center justify-between hover:text-white hover:bg-white/5 transition"
+                  @click="emit('toggleNestedSubMenu', nestedKey(item.name, sub.name))"
+                >
+                  <div class="flex items-center">
+                    <span class="w-1.5 h-1.5 mr-2 bg-current rounded-full"></span>
+                    {{ sub.name }}
+                  </div>
+                  <svg
+                    class="w-4 h-4 transition-transform"
+                    :class="[activeNestedSubMenu === nestedKey(item.name, sub.name) ? 'rotate-180' : '']"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M19 9l-7 7-7-7"
+                    />
+                  </svg>
+                </button>
+
+                <div
+                  v-if="activeNestedSubMenu === nestedKey(item.name, sub.name)"
+                  class="pb-2"
+                >
+                  <NuxtLink
+                    v-for="nested in sub.subMenus"
+                    :key="nested.name"
+                    :to="nested.route"
+                    class="flex pl-[4.5rem] pr-6 py-2 text-[13px] text-slate-400 whitespace-nowrap items-center hover:text-mint hover:bg-white/5 transition"
+                  >
+                    <span class="w-1 h-1 mr-2 bg-current rounded-full opacity-70"></span>
+                    {{ nested.name }}
+                  </NuxtLink>
+                </div>
+              </div>
+            </template>
           </div>
         </div>
       </template>

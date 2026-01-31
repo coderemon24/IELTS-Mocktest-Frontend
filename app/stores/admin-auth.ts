@@ -2,14 +2,14 @@ import { defineStore } from 'pinia'
 
 export const useAuthStore = defineStore('admin-auth', {
   state: () => ({
-    token: useCookie('auth_token').value || null,
-    loggedIn: !!useCookie('auth_token').value,
+    token: useCookie('admin_auth_token').value || null,
+    loggedIn: !!useCookie('admin_auth_token').value,
   }),
   actions: {
     login(token: string) {
       this.token = token
       this.loggedIn = true
-      useCookie('auth_token').value = token
+      useCookie('admin_auth_token').value = token
     },
     async logout() {
       const { $axios } = useNuxtApp()
@@ -21,7 +21,7 @@ export const useAuthStore = defineStore('admin-auth', {
       } finally {
         this.token = null
         this.loggedIn = false
-        useCookie('auth_token').value = null
+        useCookie('admin_auth_token').value = null
         navigateTo('/admin/login')
       }
     }
