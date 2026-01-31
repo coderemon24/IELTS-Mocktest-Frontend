@@ -139,7 +139,7 @@ export function useAdminListeningExams() {
         $axios.put(adminListeningExamEndpoint(examUniqueId), payload),
       deleteExam: (examUniqueId: string) =>
         $axios.delete(adminListeningExamEndpoint(examUniqueId)),
-      createSection: (examUniqueId: string, payload: Partial<ListeningSection>) =>
+      createSection: (examUniqueId: string, payload: any) =>
         $axios.post(adminListeningExamSectionsEndpoint(examUniqueId), payload),
       updateSection: (
         sectionUniqueId: string,
@@ -147,10 +147,8 @@ export function useAdminListeningExams() {
       ) => $axios.put(adminListeningSectionEndpoint(sectionUniqueId), payload),
       deleteSection: (sectionUniqueId: string) =>
         $axios.delete(adminListeningSectionEndpoint(sectionUniqueId)),
-      createQuestion: (
-        sectionUniqueId: string,
-        payload: Partial<ListeningQuestion>,
-      ) => $axios.post(adminListeningSectionQuestionsEndpoint(sectionUniqueId), payload),
+      createQuestion: (sectionUniqueId: string, payload: any) =>
+        $axios.post(adminListeningSectionQuestionsEndpoint(sectionUniqueId), payload),
       updateQuestion: (
         questionUniqueId: string,
         payload: Partial<ListeningQuestion>,

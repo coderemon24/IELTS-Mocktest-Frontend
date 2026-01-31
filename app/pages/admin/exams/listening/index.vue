@@ -37,6 +37,16 @@ const keySection = (sectionIndex: number, field: string) =>
 const keyQuestion = (sectionIndex: number, questionIndex: number, field: string) =>
   `sections.${sectionIndex}.questions.${questionIndex}.${field}`
 
+const setSectionAudio = (sectionIndex: number, e: Event) => {
+  const input = e.target as HTMLInputElement | null
+  const file = input?.files?.[0] ?? null
+  const section = draft.sections?.[sectionIndex]
+  if (!section) return
+  ;(section as any)._audioFile = file
+  const audioKey = keySection(sectionIndex, 'audio')
+  if (file && fieldErrors[audioKey]) delete fieldErrors[audioKey]
+}
+
 const emptyExam = (): ListeningExam => ({
   title: '',
   instruction: null,
@@ -60,7 +70,8 @@ const addSection = () => {
     order_index: (draft.sections.length ?? 0) + 1,
     status: 'active',
     questions: [],
-  })
+    _audioFile: null,
+  } as any)
 }
 
 const removeSection = (idx: number) => {
@@ -85,8 +96,7 @@ const removeQuestion = (sectionIndex: number, questionIndex: number) => {
   section.questions.splice(questionIndex, 1)
 }
 
-const { exams, pending, error, refresh, endpoint, actions } =
-  useAdminListeningExams()
+const { exams, pending, error, refresh, endpoint, actions } = useAdminListeningExams()
 
 const filtered = computed(() => {
   const q = query.value.trim().toLowerCase()
@@ -133,6 +143,10 @@ const validateDraft = () => {
     const sectionTitleKey = keySection(sIndex, 'title')
     if (!s.title?.trim()) fieldErrors[sectionTitleKey] = ['Section title is required.']
 
+    const sectionAudioKey = keySection(sIndex, 'audio')
+    const audioFile = (s as any)._audioFile as File | null | undefined
+    if (!audioFile) fieldErrors[sectionAudioKey] = ['Audio is required.']
+
     const sectionOrderKey = keySection(sIndex, 'order_index')
     if (s.order_index != null && Number(s.order_index) < 1) {
       fieldErrors[sectionOrderKey] = ['Order must be at least 1.']
@@ -166,7 +180,121 @@ const save = async () => {
 
   isSaving.value = true
   try {
-    await actions.createExam(draft)
+    const examPayload = {
+      title: draft.title,
+      instruction: draft.instruction,
+      duration: draft.duration,
+      status: draft.status,
+    }
+
+    const examResponse = await actions.createExam(examPayload)
+    const examId =
+      examResponse?.data?.unique_id ||
+      examResponse?.data?.data?.unique_id ||
+      examResponse?.data?.exam?.unique_id
+
+    if (!examId) {
+      throw new Error('Exam created but unique_id not returned.')
+    }
+
+    for (const [sIdx, section] of (draft.sections ?? []).entries()) {
+      const sectionForm = new FormData()
+      sectionForm.append('title', section.title)
+      if (section.instruction) sectionForm.append('instruction', section.instruction)
+      if (section.order_index != null)
+        sectionForm.append('order_index', String(section.order_index))
+      if (section.status) sectionForm.append('status', String(section.status))
+
+      const audioFile = (section as any)._audioFile as File | null | undefined
+      if (audioFile) sectionForm.append('audio', audioFile)
+
+      let sectionResponse: any
+      try {
+        sectionResponse = await actions.createSection(examId, sectionForm)
+      } catch (e: any) {
+        const serverErrors = e?.response?.data?.errors
+        if (serverErrors && typeof serverErrors === 'object') {
+          for (const [key, value] of Object.entries(serverErrors)) {
+            const messages = Array.isArray(value) ? (value as string[]) : null
+            if (!messages) continue
+            const k = String(key)
+            const mapped =
+              k === 'title'
+                ? keySection(sIdx, 'title')
+                : k === 'instruction'
+                  ? keySection(sIdx, 'instruction')
+                  : k === 'audio'
+                    ? keySection(sIdx, 'audio')
+                    : k === 'order_index'
+                      ? keySection(sIdx, 'order_index')
+                      : k === 'status'
+                        ? keySection(sIdx, 'status')
+                        : null
+            if (mapped) fieldErrors[mapped] = messages
+          }
+        }
+
+        if (Object.keys(fieldErrors).length === 0) {
+          saveError.value =
+            e?.response?.data?.message ||
+            e?.message ||
+            `Failed to create section #${sIdx + 1}.`
+        }
+        return
+      }
+
+      const sectionId =
+        sectionResponse?.data?.unique_id ||
+        sectionResponse?.data?.data?.unique_id ||
+        sectionResponse?.data?.section?.unique_id
+
+      if (!sectionId) {
+        saveError.value = `Section #${sIdx + 1} created but unique_id not returned.`
+        return
+      }
+
+      for (const [qIdx, question] of (section.questions ?? []).entries()) {
+        const qPayload = {
+          question_type: question.question_type,
+          question_text: question.question_text,
+          correct_answer: question.correct_answer,
+          order_index: question.order_index,
+        }
+
+        try {
+          await actions.createQuestion(sectionId, qPayload)
+        } catch (e: any) {
+          const serverErrors = e?.response?.data?.errors
+          if (serverErrors && typeof serverErrors === 'object') {
+            for (const [key, value] of Object.entries(serverErrors)) {
+              const messages = Array.isArray(value) ? (value as string[]) : null
+              if (!messages) continue
+              const k = String(key)
+              const mapped =
+                k === 'question_text'
+                  ? keyQuestion(sIdx, qIdx, 'question_text')
+                  : k === 'correct_answer'
+                    ? keyQuestion(sIdx, qIdx, 'correct_answer')
+                    : k === 'order_index'
+                      ? keyQuestion(sIdx, qIdx, 'order_index')
+                      : k === 'question_type'
+                        ? keyQuestion(sIdx, qIdx, 'question_type')
+                        : null
+              if (mapped) fieldErrors[mapped] = messages
+            }
+          }
+
+          if (Object.keys(fieldErrors).length === 0) {
+            saveError.value =
+              e?.response?.data?.message ||
+              e?.message ||
+              `Failed to create question #${qIdx + 1} in section #${sIdx + 1}.`
+          }
+          return
+        }
+      }
+    }
+
     closeCreate()
     await refresh()
   } catch (e: any) {
@@ -579,14 +707,30 @@ onBeforeUnmount(() => {
                 <div>
                   <label
                     class="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-2"
-                    >Audio (URL/path)</label
+                    >Audio (upload)</label
                   >
                   <input
-                    v-model="s.audio"
-                    type="text"
-                    class="w-full px-4 py-2 text-sm rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-mint/40"
-                    placeholder="Optional"
+                    type="file"
+                    accept="audio/*"
+                    :class="[
+                      'block w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-bold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200 dark:file:bg-slate-800 dark:file:text-slate-200 dark:hover:file:bg-slate-700 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-mint/40',
+                      hasFieldError(keySection(sIdx, 'audio')) &&
+                        'border-rose-500 dark:border-rose-500 focus:ring-rose-400',
+                    ]"
+                    @change="setSectionAudio(sIdx, $event)"
                   />
+                  <p class="mt-1 text-[11px] text-slate-400">
+                    Selected:
+                    <span class="font-medium">{{
+                      (s as any)._audioFile?.name || 'No file selected'
+                    }}</span>
+                  </p>
+                  <p
+                    v-if="fieldError(keySection(sIdx, 'audio'))"
+                    class="mt-1 text-xs text-rose-600"
+                  >
+                    {{ fieldError(keySection(sIdx, 'audio')) }}
+                  </p>
                 </div>
                 <div>
                   <label
