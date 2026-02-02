@@ -46,7 +46,8 @@ const openEdit = (question: any) => {
   }
   resetEditDraft()
   editDraft.question_type = question.question_type ?? 'fill_blank'
-  editDraft.question_text = question.question_text ?? ''
+  editDraft.question_text =
+    question.question_text ?? question.question ?? question.text ?? ''
   editDraft.correct_answer = question.correct_answer ?? ''
   editDraft.order_index = question.order_index ?? null
   editDraft._examTitle = question.exam?.title ?? null
