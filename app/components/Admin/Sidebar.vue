@@ -278,6 +278,7 @@ const nestedKey = (parent: string, child: string) => `${parent}::${child}`
                 v-if="!sub.subMenus"
                 :to="sub.route"
                 class="flex pl-14 pr-6 py-2 text-sm text-slate-400 whitespace-nowrap items-center hover:text-mint hover:bg-white/5 transition"
+                active-class="text-mint bg-white/5"
               >
                 <span class="w-1.5 h-1.5 mr-2 bg-current rounded-full"></span>
                 {{ sub.name }}
@@ -317,6 +318,7 @@ const nestedKey = (parent: string, child: string) => `${parent}::${child}`
                     :key="nested.name"
                     :to="nested.route"
                     class="flex pl-[4.5rem] pr-6 py-2 text-[13px] text-slate-400 whitespace-nowrap items-center hover:text-mint hover:bg-white/5 transition"
+                    active-class="text-mint bg-white/5"
                   >
                     <span class="w-1 h-1 mr-2 bg-current rounded-full opacity-70"></span>
                     {{ nested.name }}

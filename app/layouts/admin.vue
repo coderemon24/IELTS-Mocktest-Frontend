@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 
 const isSidebarOpen = ref(true)
 const isDark = ref(false)
@@ -8,6 +8,7 @@ const showProfileMenu = ref(false)
 const showNotifications = ref(false)
 const activeSubMenu = ref<string | null>(null)
 const activeNestedSubMenu = ref<string | null>(null)
+const route = useRoute()
 
 const toggleTheme = () => {
   isDark.value = !isDark.value
@@ -38,6 +39,31 @@ const toggleSubMenu = (name: string) => {
 const toggleNestedSubMenu = (name: string) => {
   activeNestedSubMenu.value = activeNestedSubMenu.value === name ? null : name
 }
+
+const syncActiveMenu = (path: string) => {
+  if (path.startsWith('/admin/exams')) {
+    activeSubMenu.value = 'Exams'
+    activeNestedSubMenu.value = path.startsWith('/admin/exams/listening')
+      ? 'Exams::Listening'
+      : null
+    return
+  }
+
+  if (path.startsWith('/admin/users')) {
+    activeSubMenu.value = 'Users'
+    activeNestedSubMenu.value = null
+    return
+  }
+
+  activeSubMenu.value = null
+  activeNestedSubMenu.value = null
+}
+
+watch(
+  () => route.path,
+  (path) => syncActiveMenu(path),
+  { immediate: true },
+)
 </script>
 
 <template>

@@ -21,16 +21,26 @@ definePageMeta({
 
 const query = ref('')
 const showCreate = ref(false)
+const showEdit = ref(false)
 const isSaving = ref(false)
+const isUpdating = ref(false)
 const saveError = ref<string | null>(null)
+const editError = ref<string | null>(null)
 const deletingId = ref<string | null>(null)
+const editingExamId = ref<string | null>(null)
 
 const fieldErrors = reactive<Record<string, string[]>>({})
+const editFieldErrors = reactive<Record<string, string[]>>({})
 const clearFieldErrors = () => {
   for (const key of Object.keys(fieldErrors)) delete fieldErrors[key]
 }
+const clearEditFieldErrors = () => {
+  for (const key of Object.keys(editFieldErrors)) delete editFieldErrors[key]
+}
 const fieldError = (key: string) => fieldErrors[key]?.[0] ?? null
 const hasFieldError = (key: string) => !!fieldError(key)
+const editFieldError = (key: string) => editFieldErrors[key]?.[0] ?? null
+const hasEditFieldError = (key: string) => !!editFieldError(key)
 
 const keySection = (sectionIndex: number, field: string) =>
   `sections.${sectionIndex}.${field}`
@@ -56,9 +66,13 @@ const emptyExam = (): ListeningExam => ({
 })
 
 const draft = reactive<ListeningExam>(emptyExam())
+const editDraft = reactive<ListeningExam>(emptyExam())
 
 const resetDraft = () => {
   Object.assign(draft, emptyExam())
+}
+const resetEditDraft = () => {
+  Object.assign(editDraft, emptyExam())
 }
 
 const addSection = () => {
@@ -131,6 +145,27 @@ const closeCreate = () => {
   showCreate.value = false
 }
 
+const openEdit = (exam: ListeningExam) => {
+  const examId = exam.unique_id
+  if (!examId) {
+    alert('Missing unique_id for this exam.')
+    return
+  }
+  resetEditDraft()
+  editDraft.title = exam.title ?? ''
+  editDraft.instruction = exam.instruction ?? null
+  editDraft.duration = exam.duration ?? null
+  editDraft.status = exam.status ?? 'active'
+  editingExamId.value = examId
+  editError.value = null
+  clearEditFieldErrors()
+  showEdit.value = true
+}
+
+const closeEdit = () => {
+  showEdit.value = false
+}
+
 const validateDraft = () => {
   clearFieldErrors()
 
@@ -171,6 +206,17 @@ const validateDraft = () => {
   }
 
   return Object.keys(fieldErrors).length === 0
+}
+
+const validateEditDraft = () => {
+  clearEditFieldErrors()
+
+  if (!editDraft.title?.trim()) editFieldErrors.title = ['Title is required.']
+  if (editDraft.duration != null && Number(editDraft.duration) < 1) {
+    editFieldErrors.duration = ['Duration must be at least 1.']
+  }
+
+  return Object.keys(editFieldErrors).length === 0
 }
 
 const save = async () => {
@@ -316,6 +362,45 @@ const save = async () => {
   }
 }
 
+const updateExam = async () => {
+  editError.value = null
+  clearEditFieldErrors()
+  if (!validateEditDraft()) return
+  if (!editingExamId.value) {
+    editError.value = 'Missing exam identifier.'
+    return
+  }
+
+  isUpdating.value = true
+  try {
+    const payload = {
+      title: editDraft.title,
+      instruction: editDraft.instruction,
+      duration: editDraft.duration,
+      status: editDraft.status,
+    }
+    await actions.updateExam(editingExamId.value, payload)
+    closeEdit()
+    await refresh()
+  } catch (e: any) {
+    const serverErrors = e?.response?.data?.errors
+    if (serverErrors && typeof serverErrors === 'object') {
+      for (const [key, value] of Object.entries(serverErrors)) {
+        if (Array.isArray(value)) editFieldErrors[String(key)] = value as string[]
+      }
+    }
+
+    if (Object.keys(editFieldErrors).length === 0) {
+      editError.value =
+        e?.response?.data?.message ||
+        e?.message ||
+        'Failed to update listening exam.'
+    }
+  } finally {
+    isUpdating.value = false
+  }
+}
+
 const deleteExam = async (exam: ListeningExam) => {
   const examId = exam.unique_id
   if (!examId) {
@@ -340,11 +425,18 @@ const setBodyScrollLocked = (locked: boolean) => {
   document.body.style.overflow = locked ? 'hidden' : ''
 }
 
-watch(showCreate, (v) => setBodyScrollLocked(v))
+watch([showCreate, showEdit], ([createOpen, editOpen]) =>
+  setBodyScrollLocked(createOpen || editOpen),
+)
 
 const onKeyDown = (e: KeyboardEvent) => {
-  if (!showCreate.value) return
-  if (e.key === 'Escape' && !isSaving.value) closeCreate()
+  if (!showCreate.value && !showEdit.value) return
+  if (e.key !== 'Escape') return
+  if (showEdit.value && !isUpdating.value) {
+    closeEdit()
+    return
+  }
+  if (showCreate.value && !isSaving.value) closeCreate()
 }
 
 onMounted(() => window.addEventListener('keydown', onKeyDown))
@@ -487,13 +579,21 @@ onBeforeUnmount(() => {
                 }}
               </td>
               <td class="px-6 py-4 text-right">
-                <button
-                  class="text-rose-600 hover:text-rose-700 text-xs font-bold disabled:opacity-60"
-                  :disabled="deletingId === (e.unique_id ?? null)"
-                  @click="deleteExam(e)"
-                >
-                  {{ deletingId === (e.unique_id ?? null) ? 'Deleting...' : 'Delete' }}
-                </button>
+                <div class="inline-flex items-center gap-3">
+                  <button
+                    class="text-navy hover:text-navy-light text-xs font-bold"
+                    @click="openEdit(e)"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    class="text-rose-600 hover:text-rose-700 text-xs font-bold disabled:opacity-60"
+                    :disabled="deletingId === (e.unique_id ?? null)"
+                    @click="deleteExam(e)"
+                  >
+                    {{ deletingId === (e.unique_id ?? null) ? 'Deleting...' : 'Delete' }}
+                  </button>
+                </div>
               </td>
             </tr>
 
@@ -945,6 +1045,175 @@ onBeforeUnmount(() => {
         </div>
       </div>
     </div>
+    </Teleport>
+
+    <Teleport to="body">
+      <div
+        v-if="showEdit"
+        class="fixed inset-0 z-[9999] flex items-start justify-center p-4 sm:p-8"
+      >
+        <div
+          class="absolute inset-0 bg-black/50"
+          @click="!isUpdating && closeEdit()"
+        ></div>
+
+        <div
+          class="relative w-[min(800px,calc(100vw-2rem))] max-h-[calc(100dvh-4rem)] overflow-hidden bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/60 dark:border-slate-800 shadow-2xl"
+          @click.stop
+        >
+          <div
+            class="sticky top-0 z-10 p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-white dark:bg-slate-900"
+          >
+            <div>
+              <h2 class="text-lg font-bold text-navy dark:text-white">
+                Edit Listening Exam
+              </h2>
+              <p class="text-xs text-slate-500 dark:text-slate-400">
+                Update core exam details here. Sections and questions are managed separately.
+              </p>
+            </div>
+            <button
+              class="p-2 rounded-lg text-slate-400 hover:text-navy hover:bg-slate-100 dark:hover:bg-slate-800 dark:hover:text-white disabled:opacity-50 disabled:pointer-events-none"
+              :disabled="isUpdating"
+              type="button"
+              aria-label="Close modal"
+              title="Close"
+              @click="closeEdit()"
+            >
+              <Icon name="heroicons:x-mark" class="w-5 h-5" />
+            </button>
+          </div>
+
+          <div class="p-5 space-y-6 overflow-y-auto max-h-[calc(100dvh-10rem)]">
+            <div
+              v-if="editError"
+              class="bg-rose-50 border border-rose-200 text-rose-900 rounded-xl p-4 text-sm"
+            >
+              {{ editError }}
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label
+                  class="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-2"
+                  >Title *</label
+                >
+                <input
+                  v-model="editDraft.title"
+                  type="text"
+                  :class="[
+                    'w-full px-4 py-2 text-sm rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-mint/40',
+                    hasEditFieldError('title') &&
+                      'border-rose-500 dark:border-rose-500 focus:ring-rose-400',
+                  ]"
+                  placeholder="e.g. IELTS Listening Mock Test 01"
+                />
+                <p
+                  v-if="editFieldError('title')"
+                  class="mt-1 text-xs text-rose-600"
+                >
+                  {{ editFieldError('title') }}
+                </p>
+              </div>
+              <div>
+                <label
+                  class="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-2"
+                  >Duration (minutes)</label
+                >
+                <input
+                  v-model.number="editDraft.duration"
+                  type="number"
+                  min="1"
+                  :class="[
+                    'w-full px-4 py-2 text-sm rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-mint/40',
+                    hasEditFieldError('duration') &&
+                      'border-rose-500 dark:border-rose-500 focus:ring-rose-400',
+                  ]"
+                  placeholder="e.g. 30"
+                />
+                <p
+                  v-if="editFieldError('duration')"
+                  class="mt-1 text-xs text-rose-600"
+                >
+                  {{ editFieldError('duration') }}
+                </p>
+              </div>
+              <div class="md:col-span-2">
+                <label
+                  class="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-2"
+                  >Instruction</label
+                >
+                <textarea
+                  v-model="editDraft.instruction"
+                  rows="3"
+                  :class="[
+                    'w-full px-4 py-2 text-sm rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-mint/40',
+                    hasEditFieldError('instruction') &&
+                      'border-rose-500 dark:border-rose-500 focus:ring-rose-400',
+                  ]"
+                  placeholder="Optional instructions for this exam..."
+                ></textarea>
+                <p
+                  v-if="editFieldError('instruction')"
+                  class="mt-1 text-xs text-rose-600"
+                >
+                  {{ editFieldError('instruction') }}
+                </p>
+              </div>
+              <div>
+                <label
+                  class="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-2"
+                  >Status</label
+                >
+                <select
+                  v-model="editDraft.status"
+                  class="w-full px-4 py-2 text-sm rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-mint/40"
+                >
+                  <option value="active">active</option>
+                  <option value="inactive">inactive</option>
+                </select>
+              </div>
+            </div>
+
+            <div
+              v-if="isUpdating"
+              class="absolute inset-0 z-20 bg-white/70 dark:bg-slate-900/70 backdrop-blur-sm flex flex-col items-center justify-center gap-3"
+            >
+              <div
+                class="w-10 h-10 rounded-full border-4 border-navy/20 border-t-navy dark:border-white/20 dark:border-t-white animate-spin"
+              ></div>
+              <p class="text-sm font-bold text-navy dark:text-white">
+                Updating...
+              </p>
+            </div>
+
+            <div
+              class="sticky bottom-0 z-10 -mx-5 px-5 py-4 bg-white/90 dark:bg-slate-900/90 backdrop-blur border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-2"
+            >
+              <button
+                class="px-4 py-2 text-xs font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition"
+                @click="closeEdit"
+                :disabled="isUpdating"
+              >
+                Cancel
+              </button>
+              <button
+                class="px-4 py-2 text-xs font-bold text-white bg-navy rounded-lg shadow-md shadow-navy/20 hover:bg-navy-light transition disabled:opacity-60"
+                @click="updateExam"
+                :disabled="isUpdating"
+              >
+                <span class="inline-flex items-center gap-2">
+                  <span
+                    v-if="isUpdating"
+                    class="w-4 h-4 rounded-full border-2 border-white/40 border-t-white animate-spin"
+                  ></span>
+                  {{ isUpdating ? 'Updating...' : 'Update' }}
+                </span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
     </Teleport>
   </div>
 </template>

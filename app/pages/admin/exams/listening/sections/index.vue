@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 
 definePageMeta({
   layout: 'admin',
@@ -7,7 +7,143 @@ definePageMeta({
 })
 
 const query = ref('')
-const { sections, pending, error, refresh, endpoint } = useAdminListeningExams()
+const { sections, pending, error, refresh, endpoint, actions } = useAdminListeningExams()
+const showEdit = ref(false)
+const isUpdating = ref(false)
+const editError = ref<string | null>(null)
+const editingSectionId = ref<string | null>(null)
+const editFieldErrors = reactive<Record<string, string[]>>({})
+
+const clearEditFieldErrors = () => {
+  for (const key of Object.keys(editFieldErrors)) delete editFieldErrors[key]
+}
+const editFieldError = (key: string) => editFieldErrors[key]?.[0] ?? null
+const hasEditFieldError = (key: string) => !!editFieldError(key)
+
+const editDraft = reactive({
+  title: '',
+  instruction: null as string | null,
+  audio: null as string | null,
+  order_index: null as number | null,
+  status: 'active' as string | null,
+  _audioFile: null as File | null,
+  _examTitle: null as string | null,
+})
+
+const resetEditDraft = () => {
+  editDraft.title = ''
+  editDraft.instruction = null
+  editDraft.audio = null
+  editDraft.order_index = null
+  editDraft.status = 'active'
+  editDraft._audioFile = null
+  editDraft._examTitle = null
+}
+
+const setEditAudio = (e: Event) => {
+  const input = e.target as HTMLInputElement | null
+  const file = input?.files?.[0] ?? null
+  editDraft._audioFile = file
+  if (file && editFieldErrors.audio) delete editFieldErrors.audio
+}
+
+const openEdit = (section: any) => {
+  const sectionId = section.unique_id
+  if (!sectionId) {
+    alert('Missing unique_id for this section.')
+    return
+  }
+  resetEditDraft()
+  editDraft.title = section.title ?? ''
+  editDraft.instruction = section.instruction ?? null
+  editDraft.audio = section.audio ?? null
+  editDraft.order_index = section.order_index ?? null
+  editDraft.status = section.status ?? 'active'
+  editDraft._examTitle = section.exam?.title ?? null
+  editingSectionId.value = sectionId
+  editError.value = null
+  clearEditFieldErrors()
+  showEdit.value = true
+}
+
+const closeEdit = () => {
+  showEdit.value = false
+}
+
+const validateEditDraft = () => {
+  clearEditFieldErrors()
+  if (!editDraft.title?.trim()) editFieldErrors.title = ['Title is required.']
+  if (editDraft.order_index != null && Number(editDraft.order_index) < 1) {
+    editFieldErrors.order_index = ['Order must be at least 1.']
+  }
+  return Object.keys(editFieldErrors).length === 0
+}
+
+const updateSection = async () => {
+  editError.value = null
+  clearEditFieldErrors()
+  if (!validateEditDraft()) return
+  if (!editingSectionId.value) {
+    editError.value = 'Missing section identifier.'
+    return
+  }
+
+  isUpdating.value = true
+  try {
+    let payload: any = {
+      title: editDraft.title,
+      instruction: editDraft.instruction,
+      order_index: editDraft.order_index,
+      status: editDraft.status,
+    }
+
+    if (editDraft._audioFile) {
+      const form = new FormData()
+      form.append('title', editDraft.title)
+      if (editDraft.instruction) form.append('instruction', editDraft.instruction)
+      if (editDraft.order_index != null)
+        form.append('order_index', String(editDraft.order_index))
+      if (editDraft.status) form.append('status', String(editDraft.status))
+      form.append('audio', editDraft._audioFile)
+      payload = form
+    }
+
+    await actions.updateSection(editingSectionId.value, payload)
+    closeEdit()
+    await refresh()
+  } catch (e: any) {
+    const serverErrors = e?.response?.data?.errors
+    if (serverErrors && typeof serverErrors === 'object') {
+      for (const [key, value] of Object.entries(serverErrors)) {
+        if (Array.isArray(value)) editFieldErrors[String(key)] = value as string[]
+      }
+    }
+
+    if (Object.keys(editFieldErrors).length === 0) {
+      editError.value =
+        e?.response?.data?.message || e?.message || 'Failed to update section.'
+    }
+  } finally {
+    isUpdating.value = false
+  }
+}
+
+const setBodyScrollLocked = (locked: boolean) => {
+  document.body.style.overflow = locked ? 'hidden' : ''
+}
+
+watch(showEdit, (v) => setBodyScrollLocked(v))
+
+const onKeyDown = (e: KeyboardEvent) => {
+  if (!showEdit.value) return
+  if (e.key === 'Escape' && !isUpdating.value) closeEdit()
+}
+
+onMounted(() => window.addEventListener('keydown', onKeyDown))
+onBeforeUnmount(() => {
+  window.removeEventListener('keydown', onKeyDown)
+  setBodyScrollLocked(false)
+})
 
 const filtered = computed(() => {
   const q = query.value.trim().toLowerCase()
@@ -94,6 +230,7 @@ const filtered = computed(() => {
               <th class="px-6 py-3">Order</th>
               <th class="px-6 py-3">Status</th>
               <th class="px-6 py-3 text-right">Questions</th>
+              <th class="px-6 py-3 text-right">Actions</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
@@ -139,12 +276,20 @@ const filtered = computed(() => {
               >
                 {{ s.questions?.length ?? 0 }}
               </td>
+              <td class="px-6 py-4 text-right">
+                <button
+                  class="text-navy hover:text-navy-light text-xs font-bold"
+                  @click="openEdit(s)"
+                >
+                  Edit
+                </button>
+              </td>
             </tr>
 
             <tr v-if="!pending && filtered.length === 0">
               <td
                 class="px-6 py-10 text-center text-slate-500 dark:text-slate-400"
-                colspan="6"
+                colspan="7"
               >
                 No sections found.
               </td>
@@ -153,7 +298,7 @@ const filtered = computed(() => {
             <tr v-if="pending">
               <td
                 class="px-6 py-10 text-center text-slate-500 dark:text-slate-400"
-                colspan="6"
+                colspan="7"
               >
                 Loading...
               </td>
@@ -162,6 +307,194 @@ const filtered = computed(() => {
         </table>
       </div>
     </div>
+
+    <Teleport to="body">
+      <div
+        v-if="showEdit"
+        class="fixed inset-0 z-[9999] flex items-start justify-center p-4 sm:p-8"
+      >
+        <div
+          class="absolute inset-0 bg-black/50"
+          @click="!isUpdating && closeEdit()"
+        ></div>
+
+        <div
+          class="relative w-[min(800px,calc(100vw-2rem))] max-h-[calc(100dvh-4rem)] overflow-hidden bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/60 dark:border-slate-800 shadow-2xl"
+          @click.stop
+        >
+          <div
+            class="sticky top-0 z-10 p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-white dark:bg-slate-900"
+          >
+            <div>
+              <h2 class="text-lg font-bold text-navy dark:text-white">
+                Edit Section
+              </h2>
+              <p class="text-xs text-slate-500 dark:text-slate-400">
+                Exam: {{ editDraft._examTitle || 'â€”' }}
+              </p>
+            </div>
+            <button
+              class="p-2 rounded-lg text-slate-400 hover:text-navy hover:bg-slate-100 dark:hover:bg-slate-800 dark:hover:text-white disabled:opacity-50 disabled:pointer-events-none"
+              :disabled="isUpdating"
+              type="button"
+              aria-label="Close modal"
+              title="Close"
+              @click="closeEdit()"
+            >
+              <Icon name="heroicons:x-mark" class="w-5 h-5" />
+            </button>
+          </div>
+
+          <div class="p-5 space-y-6 overflow-y-auto max-h-[calc(100dvh-10rem)]">
+            <div
+              v-if="editError"
+              class="bg-rose-50 border border-rose-200 text-rose-900 rounded-xl p-4 text-sm"
+            >
+              {{ editError }}
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label
+                  class="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-2"
+                  >Title *</label
+                >
+                <input
+                  v-model="editDraft.title"
+                  type="text"
+                  :class="[
+                    'w-full px-4 py-2 text-sm rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-mint/40',
+                    hasEditFieldError('title') &&
+                      'border-rose-500 dark:border-rose-500 focus:ring-rose-400',
+                  ]"
+                  placeholder="e.g. Section 1"
+                />
+                <p
+                  v-if="editFieldError('title')"
+                  class="mt-1 text-xs text-rose-600"
+                >
+                  {{ editFieldError('title') }}
+                </p>
+              </div>
+              <div>
+                <label
+                  class="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-2"
+                  >Order</label
+                >
+                <input
+                  v-model.number="editDraft.order_index"
+                  type="number"
+                  min="1"
+                  :class="[
+                    'w-full px-4 py-2 text-sm rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-mint/40',
+                    hasEditFieldError('order_index') &&
+                      'border-rose-500 dark:border-rose-500 focus:ring-rose-400',
+                  ]"
+                />
+                <p
+                  v-if="editFieldError('order_index')"
+                  class="mt-1 text-xs text-rose-600"
+                >
+                  {{ editFieldError('order_index') }}
+                </p>
+              </div>
+              <div class="md:col-span-2">
+                <label
+                  class="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-2"
+                  >Instruction</label
+                >
+                <textarea
+                  v-model="editDraft.instruction"
+                  rows="2"
+                  class="w-full px-4 py-2 text-sm rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-mint/40"
+                  placeholder="Optional section instruction..."
+                ></textarea>
+              </div>
+              <div>
+                <label
+                  class="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-2"
+                  >Audio (upload)</label
+                >
+                <input
+                  type="file"
+                  accept="audio/*"
+                  :class="[
+                    'block w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-bold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200 dark:file:bg-slate-800 dark:file:text-slate-200 dark:hover:file:bg-slate-700 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-mint/40',
+                    hasEditFieldError('audio') &&
+                      'border-rose-500 dark:border-rose-500 focus:ring-rose-400',
+                  ]"
+                  @change="setEditAudio($event)"
+                />
+                <p class="mt-1 text-[11px] text-slate-400">
+                  Current: <span class="font-medium">{{ editDraft.audio || 'â€”' }}</span>
+                </p>
+                <p class="mt-1 text-[11px] text-slate-400">
+                  Selected:
+                  <span class="font-medium">{{
+                    editDraft._audioFile?.name || 'No file selected'
+                  }}</span>
+                </p>
+                <p
+                  v-if="editFieldError('audio')"
+                  class="mt-1 text-xs text-rose-600"
+                >
+                  {{ editFieldError('audio') }}
+                </p>
+              </div>
+              <div>
+                <label
+                  class="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-2"
+                  >Status</label
+                >
+                <select
+                  v-model="editDraft.status"
+                  class="w-full px-4 py-2 text-sm rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-mint/40"
+                >
+                  <option value="active">active</option>
+                  <option value="inactive">inactive</option>
+                </select>
+              </div>
+            </div>
+
+            <div
+              v-if="isUpdating"
+              class="absolute inset-0 z-20 bg-white/70 dark:bg-slate-900/70 backdrop-blur-sm flex flex-col items-center justify-center gap-3"
+            >
+              <div
+                class="w-10 h-10 rounded-full border-4 border-navy/20 border-t-navy dark:border-white/20 dark:border-t-white animate-spin"
+              ></div>
+              <p class="text-sm font-bold text-navy dark:text-white">
+                Updating...
+              </p>
+            </div>
+
+            <div
+              class="sticky bottom-0 z-10 -mx-5 px-5 py-4 bg-white/90 dark:bg-slate-900/90 backdrop-blur border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-2"
+            >
+              <button
+                class="px-4 py-2 text-xs font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition"
+                @click="closeEdit"
+                :disabled="isUpdating"
+              >
+                Cancel
+              </button>
+              <button
+                class="px-4 py-2 text-xs font-bold text-white bg-navy rounded-lg shadow-md shadow-navy/20 hover:bg-navy-light transition disabled:opacity-60"
+                @click="updateSection"
+                :disabled="isUpdating"
+              >
+                <span class="inline-flex items-center gap-2">
+                  <span
+                    v-if="isUpdating"
+                    class="w-4 h-4 rounded-full border-2 border-white/40 border-t-white animate-spin"
+                  ></span>
+                  {{ isUpdating ? 'Updating...' : 'Update' }}
+                </span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
-
