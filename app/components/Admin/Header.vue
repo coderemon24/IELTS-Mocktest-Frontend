@@ -11,9 +11,23 @@ const handleLogout = () => {
 
 <template>
   <header class="h-20 bg-white/80 dark:bg-slate-800/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-6 sticky top-0 z-10 transition-colors">
-    <button @click.stop="emit('toggleSidebar')" class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 text-navy dark:text-slate-200 transition">
-      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7"></path></svg>
-    </button>
+    <div class="flex items-center gap-3">
+      <button @click.stop="emit('toggleSidebar')" class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 text-navy dark:text-slate-200 transition">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7"></path></svg>
+      </button>
+      <a
+        href="http://localhost:3000"
+        target="_blank"
+        rel="noopener"
+        class="flex items-center gap-2 px-3 py-2 rounded-lg text-slate-600 hover:text-navy hover:bg-gray-100 dark:text-slate-300 dark:hover:text-white dark:hover:bg-slate-700 transition text-sm font-semibold"
+      >
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 2a10 10 0 100 20 10 10 0 000-20z"></path>
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2 12h20M12 2c2.5 2.7 4 6 4 10s-1.5 7.3-4 10c-2.5-2.7-4-6-4-10s1.5-7.3 4-10z"></path>
+        </svg>
+        <span class="hidden sm:inline">Visit Site</span>
+      </a>
+    </div>
 
     <div class="flex items-center gap-4">
       <button @click="emit('toggleFullScreen')" class="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-slate-700 text-slate-500 transition hidden sm:block">

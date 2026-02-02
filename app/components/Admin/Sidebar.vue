@@ -210,6 +210,7 @@ const nestedKey = (parent: string, child: string) => `${parent}::${child}`
       <template v-for="(item, index) in menuItems" :key="index">
         <div v-if="!item.subMenus">
           <NuxtLink
+            v-if="item.route?.startsWith('/')"
             :to="item.route"
             class="flex px-6 py-3 text-slate-300 transition-colors relative 
             items-center hover:text-white hover:bg-white/10 group"
@@ -230,6 +231,28 @@ const nestedKey = (parent: string, child: string) => `${parent}::${child}`
               {{ item.name }}
             </div>
           </NuxtLink>
+
+          <a
+            v-else
+            :href="item.route"
+            class="flex px-6 py-3 text-slate-300 transition-colors relative 
+            items-center hover:text-white hover:bg-white/10 group"
+          >
+            <component
+              :is="getIcon(item.icon)"
+              class="w-6 h-6 transition-transform shrink-0 group-hover:scale-110"
+            />
+            <span v-if="isOpen" class="ml-3 font-medium whitespace-nowrap">{{
+              item.name
+            }}</span>
+
+            <div
+              v-if="!isOpen"
+              class="absolute left-16 z-50 px-2 py-1 text-white text-xs whitespace-nowrap bg-slate-800 border border-white/10 rounded opacity-0 pointer-events-none group-hover:opacity-100 transition shadow-lg"
+            >
+              {{ item.name }}
+            </div>
+          </a>
         </div>
 
         <div v-else>
