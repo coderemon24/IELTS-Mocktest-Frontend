@@ -42,6 +42,14 @@ const menuItems: MenuItem[] = [
       { name: 'Reading', route: '/admin/exams/reading' },
     ],
   },
+  {
+    name: 'Packages',
+    icon: 'package',
+    subMenus: [
+      { name: 'Plans', route: '/admin/packages/plans' },
+      { name: 'Features', route: '/admin/packages/features' },
+    ],
+  },
   { name: 'Students', icon: 'users', route: '/admin/students' },
   { name: 'Results', icon: 'chart-bar', route: '/admin/results' },
   {
@@ -172,6 +180,30 @@ const Icons = {
             "stroke-linecap": "round",
             "stroke-linejoin": "round",
             d: "M15 12a3 3 0 11-6 0 3 3 0 016 0z",
+          }),
+        ],
+      ),
+  },
+  package: {
+    render: () =>
+      h(
+        "svg",
+        {
+          fill: "none",
+          viewBox: "0 0 24 24",
+          stroke: "currentColor",
+          "stroke-width": 2,
+        },
+        [
+          h("path", {
+            "stroke-linecap": "round",
+            "stroke-linejoin": "round",
+            d: "M21 16V8a2 2 0 00-1-1.732l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.732l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z",
+          }),
+          h("path", {
+            "stroke-linecap": "round",
+            "stroke-linejoin": "round",
+            d: "M3.27 6.96L12 12l8.73-5.04M12 22V12",
           }),
         ],
       ),

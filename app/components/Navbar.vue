@@ -1,3 +1,15 @@
+<script setup lang="ts">
+import { ref } from 'vue'
+
+const isMockMenuOpen = ref(false)
+const toggleMockMenu = () => {
+  isMockMenuOpen.value = !isMockMenuOpen.value
+}
+const closeMockMenu = () => {
+  isMockMenuOpen.value = false
+}
+</script>
+
 <template>
   <nav class="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100 transition-all duration-300">
       <div class="container mx-auto px-4 h-20 flex items-center justify-between">
@@ -12,10 +24,53 @@
             Home
             <span class="absolute -bottom-1 left-0 w-0 h-0.5 bg-orange transition-all group-hover:w-full"></span>
           </NuxtLink>
-          <NuxtLink to="/dashboard" class="text-sm font-semibold text-slate-600 hover:text-navy transition relative group">
-            Mock Tests
-            <span class="absolute -bottom-1 left-0 w-0 h-0.5 bg-orange transition-all group-hover:w-full"></span>
-          </NuxtLink>
+          <div class="relative group" @keydown.escape="closeMockMenu">
+            <button
+              type="button"
+              class="text-sm font-semibold text-slate-600 hover:text-navy transition relative group"
+              @click="toggleMockMenu"
+            >
+              Mock Tests
+              <span class="absolute -bottom-1 left-0 w-0 h-0.5 bg-orange transition-all group-hover:w-full"></span>
+            </button>
+            <div
+              :class="[
+                'absolute left-0 top-full mt-2 w-48 rounded-xl bg-white border border-gray-100 shadow-xl py-2 opacity-0 pointer-events-none transition',
+                'before:content-[\'\'] before:absolute before:-top-2 before:left-0 before:right-0 before:h-2',
+                (isMockMenuOpen ? 'opacity-100 pointer-events-auto' : ''),
+                'group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto',
+              ]"
+            >
+              <NuxtLink
+                to="/exam/listening"
+                class="block px-4 py-2 text-sm text-slate-600 hover:text-navy hover:bg-slate-50 transition"
+                @click="closeMockMenu"
+              >
+                Listening Test
+              </NuxtLink>
+              <NuxtLink
+                to="/exam/writing"
+                class="block px-4 py-2 text-sm text-slate-600 hover:text-navy hover:bg-slate-50 transition"
+                @click="closeMockMenu"
+              >
+                Writing Test
+              </NuxtLink>
+              <NuxtLink
+                to="/exam/speaking"
+                class="block px-4 py-2 text-sm text-slate-600 hover:text-navy hover:bg-slate-50 transition"
+                @click="closeMockMenu"
+              >
+                Speaking Test
+              </NuxtLink>
+              <NuxtLink
+                to="/exam/reading"
+                class="block px-4 py-2 text-sm text-slate-600 hover:text-navy hover:bg-slate-50 transition"
+                @click="closeMockMenu"
+              >
+                Reading Test
+              </NuxtLink>
+            </div>
+          </div>
           <NuxtLink to="/dashboard" class="text-sm font-semibold text-slate-600 hover:text-navy transition relative group">
             Dashboard
             <span class="absolute -bottom-1 left-0 w-0 h-0.5 bg-orange transition-all group-hover:w-full"></span>
