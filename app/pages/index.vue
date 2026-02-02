@@ -1,6 +1,90 @@
 <script setup lang="ts">
 import gsap from 'gsap'
 
+type PricingFeature = {
+  id?: number | string
+  unique_id?: string
+  feature_key: string
+  feature_value: boolean | number | string
+}
+
+type PricingPlan = {
+  id?: number | string
+  unique_id?: string
+  name: string
+  price?: number | string | null
+  duration_days?: number | string | null
+  is_active?: boolean | number | string | null
+  features?: PricingFeature[]
+  currency?: string | null
+}
+
+const { $axios } = useNuxtApp()
+
+const normalizePlans = (payload: any): PricingPlan[] => {
+  const list =
+    (Array.isArray(payload) && payload) ||
+    (Array.isArray(payload?.data) && payload.data) ||
+    (Array.isArray(payload?.plans) && payload.plans) ||
+    []
+  return (list as any[]).filter(Boolean)
+}
+
+const {
+  data: pricingData,
+  pending: pricingPending,
+  error: pricingError,
+  refresh: refreshPricing,
+} = useAsyncData<PricingPlan[]>('home:plans', async () => {
+  const response = await $axios.get('/admin/plans')
+  const plans = normalizePlans(response.data)
+  return plans
+})
+
+const pricingPlans = computed(() => pricingData.value ?? [])
+
+const isFeaturedPlan = (plan: PricingPlan) =>
+  String(plan.name ?? '').toLowerCase().includes('pro')
+
+const formatPrice = (plan: PricingPlan) => {
+  const priceNum = Number(plan.price ?? 0)
+  if (!priceNum || Number.isNaN(priceNum)) return 'Free'
+  const currency = String(plan.currency ?? '').trim()
+  const symbol = currency
+  return symbol ? `${symbol} ${priceNum}` : `${priceNum}`
+}
+
+const formatInterval = (plan: PricingPlan) => {
+  const priceNum = Number(plan.price ?? 0)
+  if (!priceNum || Number.isNaN(priceNum)) return ''
+  const days = String(plan.duration_days ?? "1 month")
+  const [value, txt] = days.split(' ')
+  // if (!days || Number.isNaN(days)) return '/ month'
+  // if (days >= 28 && days <= 31) return '/ month'
+  return `/ ${txt}`
+}
+
+const toLabel = (key: string) =>
+  key
+    .replace(/_/g, ' ')
+    .replace(/\w/g, (m) => m.toUpperCase())
+
+const featureMeta = (feature: PricingFeature) => {
+  const raw = feature.feature_value
+  const isFalse = raw === false || raw === 'false' || raw === 0
+  const isUnlimited = raw === 'unlimited'
+  const isNumber = typeof raw === 'number' || (!Number.isNaN(Number(raw)) && raw !== true && raw !== false && raw !== 'true' && raw !== 'false')
+  let valueText = ''
+  if (isUnlimited) valueText = 'Unlimited'
+  else if (isNumber) valueText = String(raw)
+  else if (raw === true || raw === 'true') valueText = ''
+  else if (raw && raw !== false && raw !== 'false') valueText = String(raw)
+
+  const label = toLabel(feature.feature_key || 'Feature')
+  const text = isFalse ? `No ${label}` : valueText ? `${valueText} ${label}` : label
+  return { text, muted: isFalse }
+}
+
 onMounted(() => {
   // 1. Hero Content Entrance
   gsap.from('.hero-content', { 
@@ -243,49 +327,111 @@ onMounted(() => {
         </div>
 
         <div class="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-          <div class="p-8 border border-gray-200 rounded-2xl hover:border-navy transition duration-300">
-            <h3 class="text-lg font-bold text-slate-500 uppercase tracking-wide">Starter</h3>
-            <div class="mt-4 mb-6">
-              <span class="text-4xl font-bold text-navy">Free</span>
-            </div>
-            <ul class="space-y-4 mb-8 text-slate-600">
-              <li class="flex items-center gap-2"><span class="text-green-500">✓</span> 1 Full Mock Test</li>
-              <li class="flex items-center gap-2"><span class="text-green-500">✓</span> Basic Scores</li>
-              <li class="flex items-center gap-2 text-gray-400"><span class="text-gray-300">✕</span> No AI Writing Feedback</li>
-            </ul>
-            <button class="w-full py-3 border-2 border-navy text-navy font-bold rounded-lg hover:bg-navy hover:text-white transition">Sign Up Free</button>
+          <div
+            v-if="pricingError"
+            class="md:col-span-3 bg-amber-50 border border-amber-200 text-amber-900 rounded-xl p-4 text-sm text-center"
+          >
+            Failed to load plans. Please try again.
+            <button
+              class="ml-3 text-xs font-bold text-amber-900 underline"
+              @click="refreshPricing"
+            >
+              Retry
+            </button>
           </div>
 
-          <div class="p-8 bg-navy text-white rounded-2xl transform md:-translate-y-4 shadow-2xl shadow-navy/30 relative overflow-hidden">
-            <div class="absolute top-0 right-0 bg-orange text-xs font-bold px-3 py-1 rounded-bl-lg">MOST POPULAR</div>
-            <h3 class="text-lg font-bold text-slate-300 uppercase tracking-wide">Pro Bundle</h3>
-            <div class="mt-4 mb-6">
-              <span class="text-4xl font-bold text-white">৳ 499</span>
-              <span class="text-sm text-slate-300"> / month</span>
-            </div>
-            <ul class="space-y-4 mb-8 text-slate-100">
-              <li class="flex items-center gap-2"><span class="text-orange">✓</span> 10 Full Mock Tests</li>
-              <li class="flex items-center gap-2"><span class="text-orange">✓</span> Detailed AI Writing Check</li>
-              <li class="flex items-center gap-2"><span class="text-orange">✓</span> Speaking Recording Analysis</li>
-              <li class="flex items-center gap-2"><span class="text-orange">✓</span> Performance Graphs</li>
-            </ul>
-            <button class="w-full py-3 bg-orange text-white font-bold rounded-lg hover:bg-orange-hover transition shadow-lg">Get Pro Access</button>
-            <p class="text-xs text-center mt-4 text-slate-400 opacity-70">Accepts bKash, Nagad, Rocket</p>
+          <div
+            v-else-if="pricingPending"
+            class="md:col-span-3 text-center text-slate-500"
+          >
+            Loading plans...
           </div>
 
-          <div class="p-8 border border-gray-200 rounded-2xl hover:border-navy transition duration-300">
-            <h3 class="text-lg font-bold text-slate-500 uppercase tracking-wide">Unlimited</h3>
-            <div class="mt-4 mb-6">
-              <span class="text-4xl font-bold text-navy">৳ 999</span>
-              <span class="text-sm text-slate-500"> / month</span>
+          <template v-else>
+            <div
+              v-for="plan in pricingPlans"
+              :key="String(plan.id ?? plan.unique_id ?? plan.name)"
+              :class="[
+                'p-8 rounded-2xl transition duration-300 relative overflow-hidden',
+                isFeaturedPlan(plan)
+                  ? 'bg-navy text-white transform md:-translate-y-4 shadow-2xl shadow-navy/30'
+                  : 'border border-gray-200 hover:border-navy',
+              ]"
+            >
+              <div
+                v-if="isFeaturedPlan(plan)"
+                class="absolute top-0 right-0 bg-orange text-xs font-bold px-3 py-1 rounded-bl-lg"
+              >
+                MOST POPULAR
+              </div>
+              <h3
+                :class="[
+                  'text-lg font-bold uppercase tracking-wide',
+                  isFeaturedPlan(plan) ? 'text-slate-300' : 'text-slate-500',
+                ]"
+              >
+                {{ plan.name }}
+              </h3>
+              <div class="mt-4 mb-6">
+                <span
+                  :class="[
+                    'text-4xl font-bold',
+                    isFeaturedPlan(plan) ? 'text-white' : 'text-navy',
+                  ]"
+                >
+                  {{ formatPrice(plan) }}
+                </span>
+                <span
+                  v-if="formatInterval(plan)"
+                  :class="[
+                    'text-sm',
+                    isFeaturedPlan(plan) ? 'text-slate-300' : 'text-slate-500',
+                  ]"
+                >
+                  {{ formatInterval(plan) }}
+                </span>
+              </div>
+              <ul
+                v-if="(plan.features?.length ?? 0) > 0"
+                :class="[
+                  'space-y-4 mb-8',
+                  isFeaturedPlan(plan) ? 'text-slate-100' : 'text-slate-600',
+                ]"
+              >
+                <li
+                  v-for="feature in plan.features"
+                  :key="String(feature.id ?? feature.unique_id ?? feature.feature_key)"
+                  :class="['flex items-center gap-2', featureMeta(feature).muted ? 'text-gray-400' : '']"
+                >
+                  <span
+                    :class="[
+                      featureMeta(feature).muted ? 'text-gray-300' : (isFeaturedPlan(plan) ? 'text-orange' : 'text-green-500')
+                    ]"
+                  >
+                    {{ featureMeta(feature).muted ? '✕' : '✓' }}
+                  </span>
+                  {{ featureMeta(feature).text }}
+                </li>
+              </ul>
+              <p v-else class="text-sm text-slate-400 mb-8">No features listed.</p>
+              <button
+                :class="[
+                  'w-full py-3 font-bold rounded-lg transition',
+                  isFeaturedPlan(plan)
+                    ? 'bg-orange text-white hover:bg-orange-hover shadow-lg'
+                    : 'border-2 border-navy text-navy hover:bg-navy hover:text-white',
+                ]"
+              >
+                {{ isFeaturedPlan(plan) ? 'Get Pro Access' : 'Choose Plan' }}
+              </button>
+              <p
+                v-if="isFeaturedPlan(plan)"
+                class="text-xs text-center mt-4 text-slate-400 opacity-70"
+              >
+                Accepts bKash, Nagad, Rocket
+              </p>
             </div>
-            <ul class="space-y-4 mb-8 text-slate-600">
-              <li class="flex items-center gap-2"><span class="text-green-500">✓</span> Unlimited Mock Tests</li>
-              <li class="flex items-center gap-2"><span class="text-green-500">✓</span> Priority AI Processing</li>
-              <li class="flex items-center gap-2"><span class="text-green-500">✓</span> Vocabulary Builder Tool</li>
-            </ul>
-            <button class="w-full py-3 border-2 border-navy text-navy font-bold rounded-lg hover:bg-navy hover:text-white transition">Choose Unlimited</button>
-          </div>
+          </template>
         </div>
       </div>
     </section>
