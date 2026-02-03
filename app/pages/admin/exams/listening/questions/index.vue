@@ -7,6 +7,8 @@ definePageMeta({
 })
 
 const query = ref('')
+const selectedExamId = ref('')
+const selectedSectionId = ref('')
 const { sections, questions, pending, error, refresh, endpoint, actions } =
   useAdminListeningExams()
 const showCreate = ref(false)
@@ -248,8 +250,14 @@ onBeforeUnmount(() => {
 
 const filtered = computed(() => {
   const q = query.value.trim().toLowerCase()
-  if (!q) return questions.value
-  return questions.value.filter((x) => {
+  const examId = selectedExamId.value
+  const sectionId = selectedSectionId.value
+  let list = questions.value
+  if (examId) list = list.filter((x) => String(x.exam?.unique_id ?? '') === examId)
+  if (sectionId)
+    list = list.filter((x) => String(x.section?.unique_id ?? '') === sectionId)
+  if (!q) return list
+  return list.filter((x) => {
     const hay = [
       x.exam?.title,
       x.section?.title,
@@ -263,6 +271,44 @@ const filtered = computed(() => {
       .toLowerCase()
     return hay.includes(q)
   })
+})
+
+const examOptions = computed(() => {
+  const map = new Map<string, { id: string; title: string }>()
+  for (const s of sections.value) {
+    const id = s.exam?.unique_id ? String(s.exam.unique_id) : ''
+    if (!id) continue
+    if (!map.has(id)) map.set(id, { id, title: s.exam?.title ?? id })
+  }
+  return [...map.values()].sort((a, b) =>
+    (a.title ?? '').toLowerCase().localeCompare((b.title ?? '').toLowerCase()),
+  )
+})
+
+const sectionFilterOptions = computed(() => {
+  let list = sections.value
+  if (selectedExamId.value) {
+    list = list.filter(
+      (s) => String(s.exam?.unique_id ?? '') === selectedExamId.value,
+    )
+  }
+  return [...list].filter((s) => s.unique_id).sort((a, b) => {
+    const aTitle = `${a.exam?.title ?? ''} ${a.title ?? ''}`.toLowerCase()
+    const bTitle = `${b.exam?.title ?? ''} ${b.title ?? ''}`.toLowerCase()
+    return aTitle.localeCompare(bTitle)
+  })
+})
+
+watch(selectedExamId, () => {
+  if (!selectedExamId.value) return
+  if (
+    selectedSectionId.value &&
+    !sectionFilterOptions.value.some(
+      (s) => String(s.unique_id) === selectedSectionId.value,
+    )
+  ) {
+    selectedSectionId.value = ''
+  }
 })
 
 const sectionOptions = computed(() =>
@@ -325,12 +371,40 @@ const sectionOptions = computed(() =>
             {{ filtered.length }}
           </span>
         </div>
-        <input
-          v-model="query"
-          type="text"
-          placeholder="Search questions..."
-          class="w-full sm:w-80 px-4 py-2 text-sm rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-mint/40"
-        />
+        <div class="flex gap-2 w-full sm:w-auto">
+          <select
+            v-model="selectedExamId"
+            class="w-full sm:w-52 px-4 py-2 text-sm rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-mint/40"
+          >
+            <option value="">All exams</option>
+            <option
+              v-for="exam in examOptions"
+              :key="exam.id"
+              :value="exam.id"
+            >
+              {{ exam.title }}
+            </option>
+          </select>
+          <select
+            v-model="selectedSectionId"
+            class="w-full sm:w-64 px-4 py-2 text-sm rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-mint/40"
+          >
+            <option value="">All sections</option>
+            <option
+              v-for="section in sectionFilterOptions"
+              :key="String(section.unique_id)"
+              :value="String(section.unique_id)"
+            >
+              {{ section.exam?.title || 'Exam' }} — {{ section.title }}
+            </option>
+          </select>
+          <input
+            v-model="query"
+            type="text"
+            placeholder="Search questions..."
+            class="w-full sm:w-80 px-4 py-2 text-sm rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-mint/40"
+          />
+        </div>
       </div>
 
       <div class="overflow-x-auto">

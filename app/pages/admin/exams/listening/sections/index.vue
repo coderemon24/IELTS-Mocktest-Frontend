@@ -7,6 +7,7 @@ definePageMeta({
 })
 
 const query = ref('')
+const selectedExamId = ref('')
 const {
   exams,
   sections,
@@ -279,8 +280,11 @@ onBeforeUnmount(() => {
 
 const filtered = computed(() => {
   const q = query.value.trim().toLowerCase()
-  if (!q) return sections.value
-  return sections.value.filter((s) => {
+  const examId = selectedExamId.value
+  let list = sections.value
+  if (examId) list = list.filter((s) => String(s.exam?.unique_id ?? '') === examId)
+  if (!q) return list
+  return list.filter((s) => {
     const hay = [
       s.exam?.title,
       s.title,
@@ -356,12 +360,27 @@ const examOptions = computed(() =>
             {{ filtered.length }}
           </span>
         </div>
-        <input
-          v-model="query"
-          type="text"
-          placeholder="Search sections..."
-          class="w-full sm:w-80 px-4 py-2 text-sm rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-mint/40"
-        />
+        <div class="flex gap-2 w-full sm:w-auto">
+          <select
+            v-model="selectedExamId"
+            class="w-full sm:w-56 px-4 py-2 text-sm rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-mint/40"
+          >
+            <option value="">All exams</option>
+            <option
+              v-for="exam in examOptions"
+              :key="String(exam.unique_id)"
+              :value="String(exam.unique_id)"
+            >
+              {{ exam.title }}
+            </option>
+          </select>
+          <input
+            v-model="query"
+            type="text"
+            placeholder="Search sections..."
+            class="w-full sm:w-80 px-4 py-2 text-sm rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-mint/40"
+          />
+        </div>
       </div>
 
       <div class="overflow-x-auto">
@@ -400,7 +419,20 @@ const examOptions = computed(() =>
                 </p>
               </td>
               <td class="px-6 py-4 text-slate-500 dark:text-slate-400">
-                {{ s.audio || '—' }}
+                <div v-if="s.audio" class="flex flex-col gap-2">
+                  <audio controls class="w-56">
+                    <source :src="s.audio" />
+                  </audio>
+                  <!-- <a
+                    :href="s.audio"
+                    target="_blank"
+                    rel="noopener"
+                    class="text-[11px] text-slate-500 hover:text-navy dark:text-slate-400 dark:hover:text-white break-all"
+                  >
+                    {{ s.audio }}
+                  </a> -->
+                </div>
+                <span v-else>—</span>
               </td>
               <td class="px-6 py-4 text-slate-500 dark:text-slate-400">
                 {{ s.order_index ?? '—' }}
