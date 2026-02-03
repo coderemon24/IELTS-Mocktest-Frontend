@@ -7,18 +7,37 @@ definePageMeta({
 })
 
 const query = ref('')
-const { questions, pending, error, refresh, endpoint, actions } = useAdminListeningExams()
+const { sections, questions, pending, error, refresh, endpoint, actions } =
+  useAdminListeningExams()
+const showCreate = ref(false)
 const showEdit = ref(false)
+const isSaving = ref(false)
 const isUpdating = ref(false)
+const saveError = ref<string | null>(null)
 const editError = ref<string | null>(null)
+const deletingId = ref<string | null>(null)
 const editingQuestionId = ref<string | null>(null)
+const fieldErrors = reactive<Record<string, string[]>>({})
 const editFieldErrors = reactive<Record<string, string[]>>({})
 
+const clearFieldErrors = () => {
+  for (const key of Object.keys(fieldErrors)) delete fieldErrors[key]
+}
 const clearEditFieldErrors = () => {
   for (const key of Object.keys(editFieldErrors)) delete editFieldErrors[key]
 }
+const fieldError = (key: string) => fieldErrors[key]?.[0] ?? null
+const hasFieldError = (key: string) => !!fieldError(key)
 const editFieldError = (key: string) => editFieldErrors[key]?.[0] ?? null
 const hasEditFieldError = (key: string) => !!editFieldError(key)
+
+const createDraft = reactive({
+  listening_section_id: '' as string,
+  question_type: 'fill_blank' as string | null,
+  question_text: '',
+  correct_answer: '',
+  order_index: null as number | null,
+})
 
 const editDraft = reactive({
   question_type: 'fill_blank' as string | null,
@@ -29,6 +48,14 @@ const editDraft = reactive({
   _sectionTitle: null as string | null,
 })
 
+const resetCreateDraft = () => {
+  createDraft.listening_section_id = ''
+  createDraft.question_type = 'fill_blank'
+  createDraft.question_text = ''
+  createDraft.correct_answer = ''
+  createDraft.order_index = null
+}
+
 const resetEditDraft = () => {
   editDraft.question_type = 'fill_blank'
   editDraft.question_text = ''
@@ -36,6 +63,13 @@ const resetEditDraft = () => {
   editDraft.order_index = null
   editDraft._examTitle = null
   editDraft._sectionTitle = null
+}
+
+const openCreate = () => {
+  resetCreateDraft()
+  saveError.value = null
+  clearFieldErrors()
+  showCreate.value = true
 }
 
 const openEdit = (question: any) => {
@@ -62,6 +96,27 @@ const closeEdit = () => {
   showEdit.value = false
 }
 
+const closeCreate = () => {
+  showCreate.value = false
+}
+
+const validateCreateDraft = () => {
+  clearFieldErrors()
+  if (!createDraft.listening_section_id) {
+    fieldErrors.listening_section_id = ['Section is required.']
+  }
+  if (!createDraft.question_text?.includes('{blank}')) {
+    fieldErrors.question_text = ['Question text must include {blank}.']
+  }
+  if (!createDraft.correct_answer?.trim()) {
+    fieldErrors.correct_answer = ['Correct answer is required.']
+  }
+  if (createDraft.order_index != null && Number(createDraft.order_index) < 1) {
+    fieldErrors.order_index = ['Order must be at least 1.']
+  }
+  return Object.keys(fieldErrors).length === 0
+}
+
 const validateEditDraft = () => {
   clearEditFieldErrors()
   if (!editDraft.question_text?.includes('{blank}')) {
@@ -74,6 +129,40 @@ const validateEditDraft = () => {
     editFieldErrors.order_index = ['Order must be at least 1.']
   }
   return Object.keys(editFieldErrors).length === 0
+}
+
+const createQuestion = async () => {
+  saveError.value = null
+  clearFieldErrors()
+  if (!validateCreateDraft()) return
+
+  isSaving.value = true
+  try {
+    const payload = {
+      listening_section_id: createDraft.listening_section_id,
+      question_type: createDraft.question_type,
+      question_text: createDraft.question_text,
+      correct_answer: createDraft.correct_answer,
+      order_index: createDraft.order_index,
+    }
+    await actions.createQuestion(payload)
+    closeCreate()
+    await refresh()
+  } catch (e: any) {
+    const serverErrors = e?.response?.data?.errors
+    if (serverErrors && typeof serverErrors === 'object') {
+      for (const [key, value] of Object.entries(serverErrors)) {
+        if (Array.isArray(value)) fieldErrors[String(key)] = value as string[]
+      }
+    }
+
+    if (Object.keys(fieldErrors).length === 0) {
+      saveError.value =
+        e?.response?.data?.message || e?.message || 'Failed to create question.'
+    }
+  } finally {
+    isSaving.value = false
+  }
 }
 
 const updateQuestion = async () => {
@@ -113,15 +202,42 @@ const updateQuestion = async () => {
   }
 }
 
+const deleteQuestion = async (question: any) => {
+  const questionId = question.id ?? question.unique_id
+  if (!questionId) {
+    alert('Missing id for this question.')
+    return
+  }
+  const ok = confirm('Delete this question?')
+  if (!ok) return
+
+  deletingId.value = String(questionId)
+  try {
+    await actions.deleteQuestion(String(questionId))
+    await refresh()
+  } catch (e: any) {
+    alert(e?.response?.data?.message || e?.message || 'Failed to delete question.')
+  } finally {
+    deletingId.value = null
+  }
+}
+
 const setBodyScrollLocked = (locked: boolean) => {
   document.body.style.overflow = locked ? 'hidden' : ''
 }
 
-watch(showEdit, (v) => setBodyScrollLocked(v))
+watch([showCreate, showEdit], ([createOpen, editOpen]) =>
+  setBodyScrollLocked(createOpen || editOpen),
+)
 
 const onKeyDown = (e: KeyboardEvent) => {
-  if (!showEdit.value) return
-  if (e.key === 'Escape' && !isUpdating.value) closeEdit()
+  if (!showCreate.value && !showEdit.value) return
+  if (e.key !== 'Escape') return
+  if (showEdit.value && !isUpdating.value) {
+    closeEdit()
+    return
+  }
+  if (showCreate.value && !isSaving.value) closeCreate()
 }
 
 onMounted(() => window.addEventListener('keydown', onKeyDown))
@@ -148,6 +264,14 @@ const filtered = computed(() => {
     return hay.includes(q)
   })
 })
+
+const sectionOptions = computed(() =>
+  [...sections.value].filter((s) => s.unique_id).sort((a, b) => {
+    const aTitle = `${a.exam?.title ?? ''} ${a.title ?? ''}`.toLowerCase()
+    const bTitle = `${b.exam?.title ?? ''} ${b.title ?? ''}`.toLowerCase()
+    return aTitle.localeCompare(bTitle)
+  }),
+)
 </script>
 
 <template>
@@ -164,6 +288,12 @@ const filtered = computed(() => {
         </p>
       </div>
       <div class="flex gap-2">
+        <button
+          class="px-4 py-2 text-xs font-bold text-white bg-navy rounded-lg shadow-md shadow-navy/20 hover:bg-navy-light transition"
+          @click="openCreate"
+        >
+          + New Question
+        </button>
         <button
           class="px-4 py-2 text-xs font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition"
           @click="refresh"
@@ -211,7 +341,7 @@ const filtered = computed(() => {
             >
               <th class="px-6 py-3">Exam</th>
               <th class="px-6 py-3">Section</th>
-              <th class="px-6 py-3">Type</th>
+              <!-- <th class="px-6 py-3">Type</th> -->
               <th class="px-6 py-3">Question</th>
               <th class="px-6 py-3">Answer</th>
               <th class="px-6 py-3 text-right">Order</th>
@@ -230,16 +360,16 @@ const filtered = computed(() => {
               <td class="px-6 py-4 text-slate-600 dark:text-slate-300">
                 {{ q.section?.title || '—' }}
               </td>
-              <td class="px-6 py-4">
+              <!-- <td class="px-6 py-4">
                 <span
                   class="text-[10px] font-bold px-2 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500"
                 >
                   {{ q.question_type ?? '—' }}
                 </span>
-              </td>
+              </td> -->
               <td class="px-6 py-4">
                 <p class="text-slate-700 dark:text-slate-200 line-clamp-2">
-                  {{ q.question_text }}
+                  {{ q.question_display }}
                 </p>
                 <p
                   v-if="q.question_text && !q.question_text.includes('{blank}')"
@@ -262,6 +392,13 @@ const filtered = computed(() => {
                   @click="openEdit(q)"
                 >
                   Edit
+                </button>
+                <button
+                  class="ml-3 text-rose-600 hover:text-rose-700 text-xs font-bold disabled:opacity-60"
+                  :disabled="deletingId === String(q.id ?? q.unique_id)"
+                  @click="deleteQuestion(q)"
+                >
+                  {{ deletingId === String(q.id ?? q.unique_id) ? 'Deleting...' : 'Delete' }}
                 </button>
               </td>
             </tr>
@@ -288,6 +425,202 @@ const filtered = computed(() => {
       </div>
     </div>
 
+
+    <Teleport to="body">
+      <div
+        v-if="showCreate"
+        class="fixed inset-0 z-[9999] flex items-start justify-center p-4 sm:p-8"
+      >
+        <div
+          class="absolute inset-0 bg-black/50"
+          @click="!isSaving && closeCreate()"
+        ></div>
+
+        <div
+          class="relative w-[min(800px,calc(100vw-2rem))] max-h-[calc(100dvh-4rem)] overflow-hidden bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/60 dark:border-slate-800 shadow-2xl"
+          @click.stop
+        >
+          <div
+            class="sticky top-0 z-10 p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-white dark:bg-slate-900"
+          >
+            <div>
+              <h2 class="text-lg font-bold text-navy dark:text-white">
+                New Question
+              </h2>
+              <p class="text-xs text-slate-500 dark:text-slate-400">
+                Choose the listening section and add question details.
+              </p>
+            </div>
+            <button
+              class="p-2 rounded-lg text-slate-400 hover:text-navy hover:bg-slate-100 dark:hover:bg-slate-800 dark:hover:text-white disabled:opacity-50 disabled:pointer-events-none"
+              :disabled="isSaving"
+              type="button"
+              aria-label="Close modal"
+              title="Close"
+              @click="closeCreate()"
+            >
+              <Icon name="heroicons:x-mark" class="w-5 h-5" />
+            </button>
+          </div>
+
+          <div class="p-5 space-y-6 overflow-y-auto max-h-[calc(100dvh-10rem)]">
+            <div
+              v-if="saveError"
+              class="bg-rose-50 border border-rose-200 text-rose-900 rounded-xl p-4 text-sm"
+            >
+              {{ saveError }}
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div class="md:col-span-2">
+                <label
+                  class="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-2"
+                  >Section *</label
+                >
+                <select
+                  v-model="createDraft.listening_section_id"
+                  :class="[
+                    'w-full px-4 py-2 text-sm rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-mint/40',
+                    hasFieldError('listening_section_id') &&
+                      'border-rose-500 dark:border-rose-500 focus:ring-rose-400',
+                  ]"
+                >
+                  <option value="">Select section</option>
+                  <option
+                    v-for="section in sectionOptions"
+                    :key="String(section.unique_id)"
+                    :value="String(section.unique_id)"
+                  >
+                    {{ section.exam?.title || 'Exam' }} — {{ section.title }}
+                  </option>
+                </select>
+                <p
+                  v-if="fieldError('listening_section_id')"
+                  class="mt-1 text-xs text-rose-600"
+                >
+                  {{ fieldError('listening_section_id') }}
+                </p>
+              </div>
+              <div>
+                <label
+                  class="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-2"
+                  >Type</label
+                >
+                <select
+                  v-model="createDraft.question_type"
+                  class="w-full px-4 py-2 text-sm rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-mint/40"
+                >
+                  <option value="fill_blank">fill_blank</option>
+                </select>
+              </div>
+              <div>
+                <label
+                  class="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-2"
+                  >Order</label
+                >
+                <input
+                  v-model.number="createDraft.order_index"
+                  type="number"
+                  min="1"
+                  :class="[
+                    'w-full px-4 py-2 text-sm rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-mint/40',
+                    hasFieldError('order_index') &&
+                      'border-rose-500 dark:border-rose-500 focus:ring-rose-400',
+                  ]"
+                />
+                <p
+                  v-if="fieldError('order_index')"
+                  class="mt-1 text-xs text-rose-600"
+                >
+                  {{ fieldError('order_index') }}
+                </p>
+              </div>
+              <div>
+                <label
+                  class="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-2"
+                  >Correct Answer *</label
+                >
+                <input
+                  v-model="createDraft.correct_answer"
+                  type="text"
+                  :class="[
+                    'w-full px-4 py-2 text-sm rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-mint/40',
+                    hasFieldError('correct_answer') &&
+                      'border-rose-500 dark:border-rose-500 focus:ring-rose-400',
+                  ]"
+                  placeholder="e.g. library"
+                />
+                <p
+                  v-if="fieldError('correct_answer')"
+                  class="mt-1 text-xs text-rose-600"
+                >
+                  {{ fieldError('correct_answer') }}
+                </p>
+              </div>
+              <div class="md:col-span-2">
+                <label
+                  class="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-2"
+                  >Question Text *</label
+                >
+                <textarea
+                  v-model="createDraft.question_text"
+                  rows="3"
+                  :class="[
+                    'w-full px-4 py-2 text-sm rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-mint/40',
+                    hasFieldError('question_text') &&
+                      'border-rose-500 dark:border-rose-500 focus:ring-rose-400',
+                  ]"
+                  placeholder="Must include {blank}"
+                ></textarea>
+                <p
+                  v-if="fieldError('question_text')"
+                  class="mt-1 text-xs text-rose-600"
+                >
+                  {{ fieldError('question_text') }}
+                </p>
+              </div>
+            </div>
+
+            <div
+              v-if="isSaving"
+              class="absolute inset-0 z-20 bg-white/70 dark:bg-slate-900/70 backdrop-blur-sm flex flex-col items-center justify-center gap-3"
+            >
+              <div
+                class="w-10 h-10 rounded-full border-4 border-navy/20 border-t-navy dark:border-white/20 dark:border-t-white animate-spin"
+              ></div>
+              <p class="text-sm font-bold text-navy dark:text-white">
+                Saving...
+              </p>
+            </div>
+
+            <div
+              class="sticky bottom-0 z-10 -mx-5 px-5 py-4 bg-white/90 dark:bg-slate-900/90 backdrop-blur border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-2"
+            >
+              <button
+                class="px-4 py-2 text-xs font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition"
+                @click="closeCreate"
+                :disabled="isSaving"
+              >
+                Cancel
+              </button>
+              <button
+                class="px-4 py-2 text-xs font-bold text-white bg-navy rounded-lg shadow-md shadow-navy/20 hover:bg-navy-light transition disabled:opacity-60"
+                @click="createQuestion"
+                :disabled="isSaving"
+              >
+                <span class="inline-flex items-center gap-2">
+                  <span
+                    v-if="isSaving"
+                    class="w-4 h-4 rounded-full border-2 border-white/40 border-t-white animate-spin"
+                  ></span>
+                  {{ isSaving ? 'Saving...' : 'Save' }}
+                </span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Teleport>
 
     <Teleport to="body">
       <div

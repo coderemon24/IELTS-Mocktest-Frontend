@@ -46,11 +46,15 @@ export const adminListeningExamEndpoint = (uniqueId: string) =>
 export const adminListeningExamSectionsEndpoint = (examUniqueId: string) =>
   `/admin/listening-exams/${encodeURIComponent(examUniqueId)}/sections`
 
+export const adminListeningSectionsEndpoint = '/admin/listening-sections'
+
 export const adminListeningSectionEndpoint = (sectionUniqueId: string) =>
   `/admin/listening-sections/${encodeURIComponent(sectionUniqueId)}`
 
 export const adminListeningSectionQuestionsEndpoint = (sectionUniqueId: string) =>
   `/admin/listening-sections/${encodeURIComponent(sectionUniqueId)}/questions`
+
+export const adminListeningQuestionsEndpoint = '/admin/listening-questions'
 
 export const adminListeningQuestionEndpoint = (questionUniqueId: string) =>
   `/admin/listening-questions/${encodeURIComponent(questionUniqueId)}`
@@ -139,16 +143,16 @@ export function useAdminListeningExams() {
         $axios.put(adminListeningExamEndpoint(examUniqueId), payload),
       deleteExam: (examUniqueId: string) =>
         $axios.delete(adminListeningExamEndpoint(examUniqueId)),
-      createSection: (examUniqueId: string, payload: any) =>
-        $axios.post(adminListeningExamSectionsEndpoint(examUniqueId), payload),
+      createSection: (payload: any) =>
+        $axios.post(adminListeningSectionsEndpoint, payload),
       updateSection: (
         sectionUniqueId: string,
         payload: Partial<ListeningSection>,
       ) => $axios.put(adminListeningSectionEndpoint(sectionUniqueId), payload),
       deleteSection: (sectionUniqueId: string) =>
         $axios.delete(adminListeningSectionEndpoint(sectionUniqueId)),
-      createQuestion: (sectionUniqueId: string, payload: any) =>
-        $axios.post(adminListeningSectionQuestionsEndpoint(sectionUniqueId), payload),
+      createQuestion: (payload: any) =>
+        $axios.post(adminListeningQuestionsEndpoint, payload),
       updateQuestion: (
         questionUniqueId: string,
         payload: Partial<ListeningQuestion>,

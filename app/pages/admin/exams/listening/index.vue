@@ -256,7 +256,8 @@ const save = async () => {
 
       let sectionResponse: any
       try {
-        sectionResponse = await actions.createSection(examId, sectionForm)
+        sectionForm.append('listening_id', String(examId))
+        sectionResponse = await actions.createSection(sectionForm)
       } catch (e: any) {
         const serverErrors = e?.response?.data?.errors
         if (serverErrors && typeof serverErrors === 'object') {
@@ -301,6 +302,7 @@ const save = async () => {
 
       for (const [qIdx, question] of (section.questions ?? []).entries()) {
         const qPayload = {
+          listening_section_id: sectionId,
           question_type: question.question_type,
           question_text: question.question_text,
           correct_answer: question.correct_answer,
@@ -308,7 +310,7 @@ const save = async () => {
         }
 
         try {
-          await actions.createQuestion(sectionId, qPayload)
+          await actions.createQuestion(qPayload)
         } catch (e: any) {
           const serverErrors = e?.response?.data?.errors
           if (serverErrors && typeof serverErrors === 'object') {

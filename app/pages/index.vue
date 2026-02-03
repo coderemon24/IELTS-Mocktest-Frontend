@@ -36,7 +36,7 @@ const {
   error: pricingError,
   refresh: refreshPricing,
 } = useAsyncData<PricingPlan[]>('home:plans', async () => {
-  const response = await $axios.get('/admin/plans')
+  const response = await $axios.get('/plans')
   const plans = normalizePlans(response.data)
   return plans
 })
@@ -59,8 +59,6 @@ const formatInterval = (plan: PricingPlan) => {
   if (!priceNum || Number.isNaN(priceNum)) return ''
   const days = String(plan.duration_days ?? "1 month")
   const [value, txt] = days.split(' ')
-  // if (!days || Number.isNaN(days)) return '/ month'
-  // if (days >= 28 && days <= 31) return '/ month'
   return `/ ${txt}`
 }
 

@@ -7,18 +7,46 @@ definePageMeta({
 })
 
 const query = ref('')
-const { sections, pending, error, refresh, endpoint, actions } = useAdminListeningExams()
+const {
+  exams,
+  sections,
+  pending,
+  error,
+  refresh,
+  endpoint,
+  actions,
+} = useAdminListeningExams()
+const showCreate = ref(false)
 const showEdit = ref(false)
+const isSaving = ref(false)
 const isUpdating = ref(false)
+const saveError = ref<string | null>(null)
 const editError = ref<string | null>(null)
+const deletingId = ref<string | null>(null)
 const editingSectionId = ref<string | null>(null)
+const fieldErrors = reactive<Record<string, string[]>>({})
 const editFieldErrors = reactive<Record<string, string[]>>({})
 
+const clearFieldErrors = () => {
+  for (const key of Object.keys(fieldErrors)) delete fieldErrors[key]
+}
 const clearEditFieldErrors = () => {
   for (const key of Object.keys(editFieldErrors)) delete editFieldErrors[key]
 }
+const fieldError = (key: string) => fieldErrors[key]?.[0] ?? null
+const hasFieldError = (key: string) => !!fieldError(key)
 const editFieldError = (key: string) => editFieldErrors[key]?.[0] ?? null
 const hasEditFieldError = (key: string) => !!editFieldError(key)
+
+const createDraft = reactive({
+  listening_id: '' as string,
+  title: '',
+  instruction: null as string | null,
+  audio: null as string | null,
+  order_index: null as number | null,
+  status: 'active' as string | null,
+  _audioFile: null as File | null,
+})
 
 const editDraft = reactive({
   title: '',
@@ -30,6 +58,16 @@ const editDraft = reactive({
   _examTitle: null as string | null,
 })
 
+const resetCreateDraft = () => {
+  createDraft.listening_id = ''
+  createDraft.title = ''
+  createDraft.instruction = null
+  createDraft.audio = null
+  createDraft.order_index = null
+  createDraft.status = 'active'
+  createDraft._audioFile = null
+}
+
 const resetEditDraft = () => {
   editDraft.title = ''
   editDraft.instruction = null
@@ -40,11 +78,25 @@ const resetEditDraft = () => {
   editDraft._examTitle = null
 }
 
+const setCreateAudio = (e: Event) => {
+  const input = e.target as HTMLInputElement | null
+  const file = input?.files?.[0] ?? null
+  createDraft._audioFile = file
+  if (file && fieldErrors.audio) delete fieldErrors.audio
+}
+
 const setEditAudio = (e: Event) => {
   const input = e.target as HTMLInputElement | null
   const file = input?.files?.[0] ?? null
   editDraft._audioFile = file
   if (file && editFieldErrors.audio) delete editFieldErrors.audio
+}
+
+const openCreate = () => {
+  resetCreateDraft()
+  saveError.value = null
+  clearFieldErrors()
+  showCreate.value = true
 }
 
 const openEdit = (section: any) => {
@@ -70,6 +122,23 @@ const closeEdit = () => {
   showEdit.value = false
 }
 
+const closeCreate = () => {
+  showCreate.value = false
+}
+
+const validateCreateDraft = () => {
+  clearFieldErrors()
+  if (!createDraft.listening_id) {
+    fieldErrors.listening_id = ['Exam is required.']
+  }
+  if (!createDraft.title?.trim()) fieldErrors.title = ['Title is required.']
+  if (createDraft.order_index != null && Number(createDraft.order_index) < 1) {
+    fieldErrors.order_index = ['Order must be at least 1.']
+  }
+  if (!createDraft._audioFile) fieldErrors.audio = ['Audio is required.']
+  return Object.keys(fieldErrors).length === 0
+}
+
 const validateEditDraft = () => {
   clearEditFieldErrors()
   if (!editDraft.title?.trim()) editFieldErrors.title = ['Title is required.']
@@ -77,6 +146,42 @@ const validateEditDraft = () => {
     editFieldErrors.order_index = ['Order must be at least 1.']
   }
   return Object.keys(editFieldErrors).length === 0
+}
+
+const createSection = async () => {
+  saveError.value = null
+  clearFieldErrors()
+  if (!validateCreateDraft()) return
+
+  isSaving.value = true
+  try {
+    const form = new FormData()
+    form.append('listening_id', createDraft.listening_id)
+    form.append('title', createDraft.title)
+    if (createDraft.instruction) form.append('instruction', createDraft.instruction)
+    if (createDraft.order_index != null)
+      form.append('order_index', String(createDraft.order_index))
+    if (createDraft.status) form.append('status', String(createDraft.status))
+    if (createDraft._audioFile) form.append('audio', createDraft._audioFile)
+
+    await actions.createSection(form)
+    closeCreate()
+    await refresh()
+  } catch (e: any) {
+    const serverErrors = e?.response?.data?.errors
+    if (serverErrors && typeof serverErrors === 'object') {
+      for (const [key, value] of Object.entries(serverErrors)) {
+        if (Array.isArray(value)) fieldErrors[String(key)] = value as string[]
+      }
+    }
+
+    if (Object.keys(fieldErrors).length === 0) {
+      saveError.value =
+        e?.response?.data?.message || e?.message || 'Failed to create section.'
+    }
+  } finally {
+    isSaving.value = false
+  }
 }
 
 const updateSection = async () => {
@@ -128,15 +233,42 @@ const updateSection = async () => {
   }
 }
 
+const deleteSection = async (section: any) => {
+  const sectionId = section.unique_id
+  if (!sectionId) {
+    alert('Missing unique_id for this section.')
+    return
+  }
+  const ok = confirm(`Delete "${section.title}"?`)
+  if (!ok) return
+
+  deletingId.value = sectionId
+  try {
+    await actions.deleteSection(sectionId)
+    await refresh()
+  } catch (e: any) {
+    alert(e?.response?.data?.message || e?.message || 'Failed to delete section.')
+  } finally {
+    deletingId.value = null
+  }
+}
+
 const setBodyScrollLocked = (locked: boolean) => {
   document.body.style.overflow = locked ? 'hidden' : ''
 }
 
-watch(showEdit, (v) => setBodyScrollLocked(v))
+watch([showCreate, showEdit], ([createOpen, editOpen]) =>
+  setBodyScrollLocked(createOpen || editOpen),
+)
 
 const onKeyDown = (e: KeyboardEvent) => {
-  if (!showEdit.value) return
-  if (e.key === 'Escape' && !isUpdating.value) closeEdit()
+  if (!showCreate.value && !showEdit.value) return
+  if (e.key !== 'Escape') return
+  if (showEdit.value && !isUpdating.value) {
+    closeEdit()
+    return
+  }
+  if (showCreate.value && !isSaving.value) closeCreate()
 }
 
 onMounted(() => window.addEventListener('keydown', onKeyDown))
@@ -163,6 +295,14 @@ const filtered = computed(() => {
     return hay.includes(q)
   })
 })
+
+const examOptions = computed(() =>
+  [...exams.value].filter((e) => e.unique_id).sort((a, b) => {
+    const aTitle = a.title?.toLowerCase() ?? ''
+    const bTitle = b.title?.toLowerCase() ?? ''
+    return aTitle.localeCompare(bTitle)
+  }),
+)
 </script>
 
 <template>
@@ -179,6 +319,12 @@ const filtered = computed(() => {
         </p>
       </div>
       <div class="flex gap-2">
+        <button
+          class="px-4 py-2 text-xs font-bold text-white bg-navy rounded-lg shadow-md shadow-navy/20 hover:bg-navy-light transition"
+          @click="openCreate"
+        >
+          + New Section
+        </button>
         <button
           class="px-4 py-2 text-xs font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition"
           @click="refresh"
@@ -283,6 +429,13 @@ const filtered = computed(() => {
                 >
                   Edit
                 </button>
+                <button
+                  class="ml-3 text-rose-600 hover:text-rose-700 text-xs font-bold disabled:opacity-60"
+                  :disabled="deletingId === s.unique_id"
+                  @click="deleteSection(s)"
+                >
+                  {{ deletingId === s.unique_id ? 'Deleting...' : 'Delete' }}
+                </button>
               </td>
             </tr>
 
@@ -307,6 +460,221 @@ const filtered = computed(() => {
         </table>
       </div>
     </div>
+
+    <Teleport to="body">
+      <div
+        v-if="showCreate"
+        class="fixed inset-0 z-[9999] flex items-start justify-center p-4 sm:p-8"
+      >
+        <div
+          class="absolute inset-0 bg-black/50"
+          @click="!isSaving && closeCreate()"
+        ></div>
+
+        <div
+          class="relative w-[min(800px,calc(100vw-2rem))] max-h-[calc(100dvh-4rem)] overflow-hidden bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/60 dark:border-slate-800 shadow-2xl"
+          @click.stop
+        >
+          <div
+            class="sticky top-0 z-10 p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-white dark:bg-slate-900"
+          >
+            <div>
+              <h2 class="text-lg font-bold text-navy dark:text-white">
+                New Section
+              </h2>
+              <p class="text-xs text-slate-500 dark:text-slate-400">
+                Choose the listening exam and add section details.
+              </p>
+            </div>
+            <button
+              class="p-2 rounded-lg text-slate-400 hover:text-navy hover:bg-slate-100 dark:hover:bg-slate-800 dark:hover:text-white disabled:opacity-50 disabled:pointer-events-none"
+              :disabled="isSaving"
+              type="button"
+              aria-label="Close modal"
+              title="Close"
+              @click="closeCreate()"
+            >
+              <Icon name="heroicons:x-mark" class="w-5 h-5" />
+            </button>
+          </div>
+
+          <div class="p-5 space-y-6 overflow-y-auto max-h-[calc(100dvh-10rem)]">
+            <div
+              v-if="saveError"
+              class="bg-rose-50 border border-rose-200 text-rose-900 rounded-xl p-4 text-sm"
+            >
+              {{ saveError }}
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div class="md:col-span-2">
+                <label
+                  class="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-2"
+                  >Exam *</label
+                >
+                <select
+                  v-model="createDraft.listening_id"
+                  :class="[
+                    'w-full px-4 py-2 text-sm rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-mint/40',
+                    hasFieldError('listening_id') &&
+                      'border-rose-500 dark:border-rose-500 focus:ring-rose-400',
+                  ]"
+                >
+                  <option value="">Select exam</option>
+                  <option
+                    v-for="exam in examOptions"
+                    :key="String(exam.unique_id)"
+                    :value="String(exam.unique_id)"
+                  >
+                    {{ exam.title }}
+                  </option>
+                </select>
+                <p
+                  v-if="fieldError('listening_id')"
+                  class="mt-1 text-xs text-rose-600"
+                >
+                  {{ fieldError('listening_id') }}
+                </p>
+              </div>
+              <div>
+                <label
+                  class="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-2"
+                  >Title *</label
+                >
+                <input
+                  v-model="createDraft.title"
+                  type="text"
+                  :class="[
+                    'w-full px-4 py-2 text-sm rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-mint/40',
+                    hasFieldError('title') &&
+                      'border-rose-500 dark:border-rose-500 focus:ring-rose-400',
+                  ]"
+                  placeholder="e.g. Section 1"
+                />
+                <p
+                  v-if="fieldError('title')"
+                  class="mt-1 text-xs text-rose-600"
+                >
+                  {{ fieldError('title') }}
+                </p>
+              </div>
+              <div>
+                <label
+                  class="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-2"
+                  >Order</label
+                >
+                <input
+                  v-model.number="createDraft.order_index"
+                  type="number"
+                  min="1"
+                  :class="[
+                    'w-full px-4 py-2 text-sm rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-mint/40',
+                    hasFieldError('order_index') &&
+                      'border-rose-500 dark:border-rose-500 focus:ring-rose-400',
+                  ]"
+                />
+                <p
+                  v-if="fieldError('order_index')"
+                  class="mt-1 text-xs text-rose-600"
+                >
+                  {{ fieldError('order_index') }}
+                </p>
+              </div>
+              <div class="md:col-span-2">
+                <label
+                  class="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-2"
+                  >Instruction</label
+                >
+                <textarea
+                  v-model="createDraft.instruction"
+                  rows="2"
+                  class="w-full px-4 py-2 text-sm rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-mint/40"
+                  placeholder="Optional section instruction..."
+                ></textarea>
+              </div>
+              <div>
+                <label
+                  class="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-2"
+                  >Audio (upload) *</label
+                >
+                <input
+                  type="file"
+                  accept="audio/*"
+                  :class="[
+                    'block w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-bold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200 dark:file:bg-slate-800 dark:file:text-slate-200 dark:hover:file:bg-slate-700 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-mint/40',
+                    hasFieldError('audio') &&
+                      'border-rose-500 dark:border-rose-500 focus:ring-rose-400',
+                  ]"
+                  @change="setCreateAudio($event)"
+                />
+                <p class="mt-1 text-[11px] text-slate-400">
+                  Selected:
+                  <span class="font-medium">{{
+                    createDraft._audioFile?.name || 'No file selected'
+                  }}</span>
+                </p>
+                <p
+                  v-if="fieldError('audio')"
+                  class="mt-1 text-xs text-rose-600"
+                >
+                  {{ fieldError('audio') }}
+                </p>
+              </div>
+              <div>
+                <label
+                  class="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-2"
+                  >Status</label
+                >
+                <select
+                  v-model="createDraft.status"
+                  class="w-full px-4 py-2 text-sm rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-mint/40"
+                >
+                  <option value="active">active</option>
+                  <option value="inactive">inactive</option>
+                </select>
+              </div>
+            </div>
+
+            <div
+              v-if="isSaving"
+              class="absolute inset-0 z-20 bg-white/70 dark:bg-slate-900/70 backdrop-blur-sm flex flex-col items-center justify-center gap-3"
+            >
+              <div
+                class="w-10 h-10 rounded-full border-4 border-navy/20 border-t-navy dark:border-white/20 dark:border-t-white animate-spin"
+              ></div>
+              <p class="text-sm font-bold text-navy dark:text-white">
+                Saving...
+              </p>
+            </div>
+
+            <div
+              class="sticky bottom-0 z-10 -mx-5 px-5 py-4 bg-white/90 dark:bg-slate-900/90 backdrop-blur border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-2"
+            >
+              <button
+                class="px-4 py-2 text-xs font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition"
+                @click="closeCreate"
+                :disabled="isSaving"
+              >
+                Cancel
+              </button>
+              <button
+                class="px-4 py-2 text-xs font-bold text-white bg-navy rounded-lg shadow-md shadow-navy/20 hover:bg-navy-light transition disabled:opacity-60"
+                @click="createSection"
+                :disabled="isSaving"
+              >
+                <span class="inline-flex items-center gap-2">
+                  <span
+                    v-if="isSaving"
+                    class="w-4 h-4 rounded-full border-2 border-white/40 border-t-white animate-spin"
+                  ></span>
+                  {{ isSaving ? 'Saving...' : 'Save' }}
+                </span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Teleport>
 
     <Teleport to="body">
       <div
