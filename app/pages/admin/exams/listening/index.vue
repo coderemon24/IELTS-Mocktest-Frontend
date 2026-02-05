@@ -13,6 +13,7 @@ import {
   adminListeningExamsEndpoint,
   useAdminListeningExams,
 } from '@/composables/useAdminListeningExams'
+import AdminTinyEditor from '@/components/Admin/TinyEditor.vue'
 
 definePageMeta({
   layout: 'admin',
@@ -714,16 +715,19 @@ onBeforeUnmount(() => {
                 class="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-2"
                 >Instruction</label
               >
-              <textarea
-                v-model="draft.instruction"
-                rows="3"
+              <div
                 :class="[
-                  'w-full px-4 py-2 text-sm rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-mint/40',
+                  'rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 overflow-hidden',
                   hasFieldError('instruction') &&
-                    'border-rose-500 dark:border-rose-500 focus:ring-rose-400',
+                    'border-rose-500 dark:border-rose-500',
                 ]"
-                placeholder="Optional instructions for this exam..."
-              ></textarea>
+              >
+                <AdminTinyEditor
+                  v-model="draft.instruction"
+                  placeholder="Optional instructions for this exam..."
+                  :height="200"
+                />
+              </div>
               <p
                 v-if="fieldError('instruction')"
                 class="mt-1 text-xs text-rose-600"
@@ -874,12 +878,13 @@ onBeforeUnmount(() => {
                     class="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-2"
                     >Instruction</label
                   >
-                  <textarea
-                    v-model="s.instruction"
-                    rows="2"
-                    class="w-full px-4 py-2 text-sm rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-mint/40"
-                    placeholder="Optional section instruction..."
-                  ></textarea>
+                  <div class="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 overflow-hidden">
+                    <AdminTinyEditor
+                      v-model="s.instruction"
+                      placeholder="Optional section instruction..."
+                      :height="140"
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -1145,16 +1150,19 @@ onBeforeUnmount(() => {
                   class="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-2"
                   >Instruction</label
                 >
-                <textarea
-                  v-model="editDraft.instruction"
-                  rows="3"
+                <div
                   :class="[
-                    'w-full px-4 py-2 text-sm rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-mint/40',
+                    'rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 overflow-hidden',
                     hasEditFieldError('instruction') &&
-                      'border-rose-500 dark:border-rose-500 focus:ring-rose-400',
+                      'border-rose-500 dark:border-rose-500',
                   ]"
-                  placeholder="Optional instructions for this exam..."
-                ></textarea>
+                >
+                  <AdminTinyEditor
+                    v-model="editDraft.instruction"
+                    placeholder="Optional instructions for this exam..."
+                    :height="200"
+                  />
+                </div>
                 <p
                   v-if="editFieldError('instruction')"
                   class="mt-1 text-xs text-rose-600"

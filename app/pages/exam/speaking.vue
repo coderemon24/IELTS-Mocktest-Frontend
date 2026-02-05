@@ -5,7 +5,7 @@ import { useRouter } from 'vue-router'
 
 
 
-definePageMeta({ layout: false })
+definePageMeta({ layout: false, middleware: 'user-auth' })
 
 const router = useRouter()
 const currentStep = ref(0)

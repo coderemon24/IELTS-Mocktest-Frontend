@@ -8,7 +8,10 @@ import { useExamSystem } from '~/composables/useExamSystem'
 const { userAnswers, initExam } = useExamSystem()
 initExam('listening_part_1')
 
-definePageMeta({ layout: false })
+definePageMeta({
+  layout: false,
+  middleware: 'user-auth',
+})
 
 const router = useRouter()
 const currentTask = ref<'task1' | 'task2'>('task1')

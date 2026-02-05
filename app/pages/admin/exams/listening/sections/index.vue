@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import AdminTinyEditor from '@/components/Admin/TinyEditor.vue'
 
 definePageMeta({
   layout: 'admin',
@@ -617,12 +618,13 @@ const examOptions = computed(() =>
                   class="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-2"
                   >Instruction</label
                 >
-                <textarea
-                  v-model="createDraft.instruction"
-                  rows="2"
-                  class="w-full px-4 py-2 text-sm rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-mint/40"
-                  placeholder="Optional section instruction..."
-                ></textarea>
+                <div class="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 overflow-hidden">
+                  <AdminTinyEditor
+                    v-model="createDraft.instruction"
+                    placeholder="Optional section instruction..."
+                    :height="140"
+                  />
+                </div>
               </div>
               <div>
                 <label
@@ -803,12 +805,13 @@ const examOptions = computed(() =>
                   class="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-2"
                   >Instruction</label
                 >
-                <textarea
-                  v-model="editDraft.instruction"
-                  rows="2"
-                  class="w-full px-4 py-2 text-sm rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-mint/40"
-                  placeholder="Optional section instruction..."
-                ></textarea>
+                <div class="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 overflow-hidden">
+                  <AdminTinyEditor
+                    v-model="editDraft.instruction"
+                    placeholder="Optional section instruction..."
+                    :height="140"
+                  />
+                </div>
               </div>
               <div>
                 <label
