@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
+import { useUserAuthStore } from '../stores/user-auth'
 
 const isMockMenuOpen = ref(false)
 const toggleMockMenu = () => {
@@ -8,6 +9,12 @@ const toggleMockMenu = () => {
 const closeMockMenu = () => {
   isMockMenuOpen.value = false
 }
+
+const auth = useUserAuthStore()
+const isLoggedIn = computed(() => auth.loggedIn)
+const displayName = computed(() => auth.user?.name || 'Student')
+
+const logout = () => auth.logout()
 </script>
 
 <template>
@@ -80,16 +87,25 @@ const closeMockMenu = () => {
         <div class="flex items-center gap-4">
           
           <div v-if="isLoggedIn" class="flex items-center gap-3">
-             <NuxtLink to="/dashboard/profile" class="flex items-center gap-3 pl-2 pr-1 py-1 rounded-full border border-gray-200 hover:border-navy hover:shadow-md transition bg-white group cursor-pointer">
-               <div class="text-right hidden sm:block">
-                 <p class="text-xs font-bold text-navy">Rahim U.</p>
-                 <p class="text-[10px] text-slate-400">Student</p>
-               </div>
-               <img src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=100&auto=format&fit=crop" class="w-9 h-9 rounded-full border-2 border-white shadow-sm group-hover:scale-105 transition" alt="Profile">
-             </NuxtLink>
+            <NuxtLink to="/my/subscriptions" class="hidden sm:inline-flex px-4 py-2 text-sm font-semibold text-navy border border-gray-200 rounded-xl hover:border-navy hover:bg-slate-50 transition">
+              My Subscriptions
+            </NuxtLink>
+            <NuxtLink to="/my/orders" class="hidden sm:inline-flex px-4 py-2 text-sm font-semibold text-navy border border-gray-200 rounded-xl hover:border-navy hover:bg-slate-50 transition">
+              My Orders
+            </NuxtLink>
+            <NuxtLink to="/dashboard/profile" class="flex items-center gap-3 pl-2 pr-1 py-1 rounded-full border border-gray-200 hover:border-navy hover:shadow-md transition bg-white group cursor-pointer">
+              <div class="text-right hidden sm:block">
+                <p class="text-xs font-bold text-navy">{{ displayName }}</p>
+                <p class="text-[10px] text-slate-400">Student</p>
+              </div>
+              <img src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=100&auto=format&fit=crop" class="w-9 h-9 rounded-full border-2 border-white shadow-sm group-hover:scale-105 transition" alt="Profile">
+            </NuxtLink>
+            <button @click="logout" class="px-4 py-2 text-sm font-semibold text-slate-600 border border-gray-200 rounded-xl hover:border-navy hover:text-navy transition">
+              Logout
+            </button>
           </div>
 
-          <NuxtLink v-else to="/auth/login" class="group relative px-6 py-2.5 rounded-xl bg-navy text-white font-bold overflow-hidden shadow-lg shadow-navy/20 hover:shadow-navy/40 transition-all transform hover:-translate-y-0.5">
+          <NuxtLink v-else to="/login" class="group relative px-6 py-2.5 rounded-xl bg-navy text-white font-bold overflow-hidden shadow-lg shadow-navy/20 hover:shadow-navy/40 transition-all transform hover:-translate-y-0.5">
             <span class="relative z-10 flex items-center gap-2">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"></path></svg>
               Login

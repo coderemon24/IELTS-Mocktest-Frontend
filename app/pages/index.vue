@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import gsap from 'gsap'
+import { useUserAuthStore } from '../stores/user-auth'
 
 type PricingFeature = {
   id?: number | string
@@ -20,6 +21,7 @@ type PricingPlan = {
 }
 
 const { $axios } = useNuxtApp()
+const auth = useUserAuthStore()
 
 const normalizePlans = (payload: any): PricingPlan[] => {
   const list =
@@ -81,6 +83,19 @@ const featureMeta = (feature: PricingFeature) => {
   const label = toLabel(feature.feature_key || 'Feature')
   const text = isFalse ? `No ${label}` : valueText ? `${valueText} ${label}` : label
   return { text, muted: isFalse }
+}
+
+const handleBuy = async (plan: PricingPlan) => {
+  const planId = plan.id ?? plan.unique_id
+  if (!planId) return
+
+  const checkoutPath = `/checkout/${planId}`
+  if (!auth.loggedIn) {
+    await navigateTo(`/login?redirect=${encodeURIComponent(checkoutPath)}`)
+    return
+  }
+
+  await navigateTo(checkoutPath)
 }
 
 onMounted(() => {
@@ -419,6 +434,7 @@ onMounted(() => {
                     ? 'bg-orange text-white hover:bg-orange-hover shadow-lg'
                     : 'border-2 border-navy text-navy hover:bg-navy hover:text-white',
                 ]"
+                @click="handleBuy(plan)"
               >
                 {{ isFeaturedPlan(plan) ? 'Get Pro Access' : 'Choose Plan' }}
               </button>

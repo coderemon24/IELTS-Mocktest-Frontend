@@ -50,6 +50,15 @@ const menuItems: MenuItem[] = [
       { name: 'Features', route: '/admin/packages/features' },
     ],
   },
+  {
+    name: 'Commerce',
+    icon: 'package',
+    subMenus: [
+      { name: 'Orders', route: '/admin/orders' },
+      { name: 'Payments', route: '/admin/payments' },
+      { name: 'Subscriptions', route: '/admin/subscriptions' },
+    ],
+  },
   { name: 'Students', icon: 'users', route: '/admin/students' },
   { name: 'Results', icon: 'chart-bar', route: '/admin/results' },
   {
