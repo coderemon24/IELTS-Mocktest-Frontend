@@ -122,7 +122,11 @@ onMounted(fetchPlan)
             <p class="text-sm font-semibold text-navy mb-3">Included Features</p>
             <ul class="space-y-2 text-sm text-slate-600">
               <li v-for="feature in plan.features || []" :key="feature.id || feature.feature_key" class="flex items-center gap-2">
-                <span class="text-green-500">?</span>
+                <span class="w-5 h-5 rounded-full bg-emerald-100 text-emerald-600 inline-flex items-center justify-center">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
+                  </svg>
+                </span>
                 {{ feature.feature_key }}
               </li>
               <li v-if="(plan.features || []).length === 0" class="text-slate-400">No features listed.</li>
