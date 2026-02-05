@@ -5,35 +5,45 @@ type AuthUser = {
   email?: string
 }
 
+const cookieOptions = {
+  path: '/',
+  sameSite: 'lax' as const,
+  maxAge: 60 * 60 * 24 * 30,
+}
+
 const readUserCookie = (): AuthUser | null => {
-  const raw = useCookie('user_profile').value
+  const raw = useCookie<AuthUser | string | null>('user_profile', cookieOptions).value
   if (!raw) return null
-  try {
-    return JSON.parse(raw)
-  } catch {
-    return null
+  if (typeof raw === 'object') return raw as AuthUser
+  if (typeof raw === 'string') {
+    try {
+      return JSON.parse(raw) as AuthUser
+    } catch {
+      return null
+    }
   }
+  return null
 }
 
 export const useUserAuthStore = defineStore('user-auth', {
   state: () => ({
-    token: useCookie('user_auth_token').value || null,
+    token: useCookie('user_auth_token', cookieOptions).value || null,
     user: readUserCookie(),
-    loggedIn: !!useCookie('user_auth_token').value,
+    loggedIn: !!useCookie('user_auth_token', cookieOptions).value,
   }),
   actions: {
     login(token: string, user?: AuthUser | null) {
       this.token = token
       this.loggedIn = true
-      useCookie('user_auth_token').value = token
+      useCookie('user_auth_token', cookieOptions).value = token
       if (user) {
         this.user = user
-        useCookie('user_profile').value = JSON.stringify(user)
+        useCookie<AuthUser | null>('user_profile', cookieOptions).value = user
       }
     },
     setUser(user: AuthUser | null) {
       this.user = user
-      useCookie('user_profile').value = user ? JSON.stringify(user) : null
+      useCookie<AuthUser | null>('user_profile', cookieOptions).value = user
     },
     async logout() {
       const { $axios } = useNuxtApp()
@@ -46,8 +56,8 @@ export const useUserAuthStore = defineStore('user-auth', {
         this.token = null
         this.loggedIn = false
         this.user = null
-        useCookie('user_auth_token').value = null
-        useCookie('user_profile').value = null
+        useCookie('user_auth_token', cookieOptions).value = null
+        useCookie('user_profile', cookieOptions).value = null
         navigateTo('/auth/login')
       }
     },
