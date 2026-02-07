@@ -96,7 +96,7 @@ onMounted(fetchPlan)
             <h1 class="text-2xl font-bold text-navy">Checkout</h1>
             <p class="text-sm text-slate-500">Confirm your package and proceed to payment.</p>
           </div>
-          <NuxtLink to="/" class="text-sm font-semibold text-slate-500 hover:text-navy">Back to plans</NuxtLink>
+          <NuxtLink to="/pricing-plans" class="text-sm font-semibold text-slate-500 hover:text-navy">Back to plans</NuxtLink>
         </div>
 
         <div v-if="errorMessage" class="mt-6 bg-rose-50 border border-rose-200 text-rose-900 rounded-xl p-4 text-sm">

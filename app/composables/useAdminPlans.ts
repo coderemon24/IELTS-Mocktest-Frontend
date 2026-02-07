@@ -14,13 +14,59 @@ export type Plan = {
   is_active: boolean | number | null
 }
 
+const toNumberOrNull = (value: unknown): number | null => {
+  if (value == null || value === '') return null
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null
+  if (typeof value === 'string') {
+    const trimmed = value.trim()
+    if (!trimmed) return null
+    const direct = Number(trimmed)
+    if (Number.isFinite(direct)) return direct
+    const matched = trimmed.match(/-?\d+(\.\d+)?/)
+    if (!matched) return null
+    const parsed = Number(matched[0])
+    return Number.isFinite(parsed) ? parsed : null
+  }
+  return null
+}
+
+const toIsActive = (value: unknown): boolean | number | null => {
+  if (value == null) return null
+  if (typeof value === 'boolean' || typeof value === 'number') return value
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase()
+    if (normalized === 'active' || normalized === 'true' || normalized === '1') {
+      return true
+    }
+    if (
+      normalized === 'inactive' ||
+      normalized === 'false' ||
+      normalized === '0'
+    ) {
+      return false
+    }
+  }
+  return null
+}
+
 const normalizePlans = (payload: any): Plan[] => {
   const list =
     (Array.isArray(payload) && payload) ||
     (Array.isArray(payload?.data) && payload.data) ||
     (Array.isArray(payload?.plans) && payload.plans) ||
     []
-  return (list as any[]).filter(Boolean)
+  return (list as any[])
+    .filter(Boolean)
+    .map((item) => ({
+      id: item.id,
+      unique_id: item.unique_id,
+      name: String(item.name ?? ''),
+      price: toNumberOrNull(item.price),
+      duration_days: toNumberOrNull(
+        item.duration_days ?? item.duration ?? item.duration_in_days,
+      ),
+      is_active: toIsActive(item.is_active ?? item.status),
+    }))
 }
 
 const normalizeFeatures = (payload: any): PlanFeature[] => {

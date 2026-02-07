@@ -33,11 +33,14 @@ type ListeningExam = {
 
 const { $axios } = useNuxtApp()
 const route = useRoute()
+const { hasActiveSubscription, isCheckingSubscription, refreshSubscription } =
+  useSubscriptionAccess()
 
 const exam = ref<ListeningExam | null>(null)
 const isLoading = ref(true)
 const errorMessage = ref<string | null>(null)
 const expanded = ref<Record<string, boolean>>({})
+const isReady = computed(() => !isLoading.value && !isCheckingSubscription.value)
 
 const fetchExam = async () => {
   isLoading.value = true
@@ -67,7 +70,9 @@ const audioUrl = (path?: string | null) => {
   return `${path}`
 }
 
-onMounted(fetchExam)
+onMounted(async () => {
+  await Promise.all([fetchExam(), refreshSubscription()])
+})
 </script>
 
 <template>
@@ -87,7 +92,32 @@ onMounted(fetchExam)
           {{ errorMessage }}
         </div>
 
-        <div v-else-if="isLoading" class="bg-white rounded-3xl border border-gray-100 p-8 text-slate-500">Loading exam...</div>
+        <div v-else-if="!isReady" class="bg-white rounded-3xl border border-gray-100 p-8 text-slate-500">Loading exam...</div>
+
+        <div
+          v-else-if="!hasActiveSubscription"
+          class="bg-white rounded-3xl border border-amber-200 p-8 shadow-sm"
+        >
+          <p class="text-xs font-bold uppercase tracking-widest text-amber-700">Access Locked</p>
+          <h2 class="mt-2 text-2xl font-bold text-slate-900">Active Subscription Needed</h2>
+          <p class="mt-2 text-sm text-slate-600">
+            You cannot start this listening test yet. Please buy a subscription plan first.
+          </p>
+          <div class="mt-6 flex flex-col sm:flex-row gap-3">
+            <NuxtLink
+              to="/pricing-plans"
+              class="flex-1 text-center bg-navy text-white font-bold py-3 rounded-xl hover:bg-navy-light transition"
+            >
+              View Pricing Plans
+            </NuxtLink>
+            <NuxtLink
+              :to="`/exam/listening/${route.params.id}`"
+              class="flex-1 text-center border border-gray-200 py-3 rounded-xl font-semibold text-slate-600 hover:border-navy hover:text-navy"
+            >
+              Back to Instructions
+            </NuxtLink>
+          </div>
+        </div>
 
         <div v-else-if="exam" class="space-y-6">
           <div class="bg-white rounded-3xl border border-gray-100 p-6 shadow-sm">

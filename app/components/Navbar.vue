@@ -30,11 +30,21 @@ const closeProfile = () => {
 }
 
 const route = useRoute()
-const isActive = (path: string) => route.path === path
+const isActive = (path: string) =>
+  path === '/' ? route.path === '/' : route.path === path || route.path.startsWith(`${path}/`)
 const menuClass = (path: string) =>
   isActive(path)
     ? 'bg-navy text-white'
     : 'text-slate-600 hover:bg-slate-50 hover:text-navy'
+const topMenuClass = (path: string) =>
+  isActive(path) ? 'text-navy' : 'text-slate-600 hover:text-navy'
+const topMenuUnderlineClass = (path: string) =>
+  isActive(path) ? 'w-full' : 'w-0 group-hover:w-full'
+const isMockTestsActive = computed(() => route.path.startsWith('/exam/'))
+const mockMenuClass = (path: string) =>
+  isActive(path)
+    ? 'block px-4 py-2 text-sm text-navy bg-slate-50 font-semibold transition'
+    : 'block px-4 py-2 text-sm text-slate-600 hover:text-navy hover:bg-slate-50 transition'
 
 const hydrateUser = async () => {
   if (!process.client) return
@@ -72,18 +82,30 @@ onMounted(hydrateUser)
         </NuxtLink>
 
         <div class="hidden md:flex items-center gap-8">
-          <NuxtLink to="/" class="text-sm font-semibold text-slate-600 hover:text-navy transition relative group">
+          <NuxtLink to="/" :class="['text-sm font-semibold transition relative group', topMenuClass('/')]">
             Home
-            <span class="absolute -bottom-1 left-0 w-0 h-0.5 bg-orange transition-all group-hover:w-full"></span>
+            <span :class="['absolute -bottom-1 left-0 h-0.5 bg-orange transition-all', topMenuUnderlineClass('/')]"></span>
+          </NuxtLink>
+          <NuxtLink to="/pricing-plans" :class="['text-sm font-semibold transition relative group', topMenuClass('/pricing-plans')]">
+            Pricing Plans
+            <span :class="['absolute -bottom-1 left-0 h-0.5 bg-orange transition-all', topMenuUnderlineClass('/pricing-plans')]"></span>
           </NuxtLink>
           <div class="relative group" @keydown.escape="closeMockMenu">
             <button
               type="button"
-              class="text-sm font-semibold text-slate-600 hover:text-navy transition relative group"
+              :class="[
+                'text-sm font-semibold transition relative group',
+                isMockTestsActive ? 'text-navy' : 'text-slate-600 hover:text-navy',
+              ]"
               @click="toggleMockMenu"
             >
               Mock Tests
-              <span class="absolute -bottom-1 left-0 w-0 h-0.5 bg-orange transition-all group-hover:w-full"></span>
+              <span
+                :class="[
+                  'absolute -bottom-1 left-0 h-0.5 bg-orange transition-all',
+                  isMockTestsActive ? 'w-full' : 'w-0 group-hover:w-full',
+                ]"
+              ></span>
             </button>
             <div
               :class="[
@@ -95,37 +117,37 @@ onMounted(hydrateUser)
             >
               <NuxtLink
                 to="/exam/listening"
-                class="block px-4 py-2 text-sm text-slate-600 hover:text-navy hover:bg-slate-50 transition"
+                :class="mockMenuClass('/exam/listening')"
                 @click="closeMockMenu"
               >
                 Listening Test
               </NuxtLink>
               <NuxtLink
                 to="/exam/writing"
-                class="block px-4 py-2 text-sm text-slate-600 hover:text-navy hover:bg-slate-50 transition"
+                :class="mockMenuClass('/exam/writing')"
                 @click="closeMockMenu"
               >
                 Writing Test
               </NuxtLink>
               <NuxtLink
                 to="/exam/speaking"
-                class="block px-4 py-2 text-sm text-slate-600 hover:text-navy hover:bg-slate-50 transition"
+                :class="mockMenuClass('/exam/speaking')"
                 @click="closeMockMenu"
               >
                 Speaking Test
               </NuxtLink>
               <NuxtLink
                 to="/exam/reading"
-                class="block px-4 py-2 text-sm text-slate-600 hover:text-navy hover:bg-slate-50 transition"
+                :class="mockMenuClass('/exam/reading')"
                 @click="closeMockMenu"
               >
                 Reading Test
               </NuxtLink>
             </div>
           </div>
-          <NuxtLink to="/dashboard" class="text-sm font-semibold text-slate-600 hover:text-navy transition relative group">
+          <NuxtLink to="/dashboard" :class="['text-sm font-semibold transition relative group', topMenuClass('/dashboard')]">
             Dashboard
-            <span class="absolute -bottom-1 left-0 w-0 h-0.5 bg-orange transition-all group-hover:w-full"></span>
+            <span :class="['absolute -bottom-1 left-0 h-0.5 bg-orange transition-all', topMenuUnderlineClass('/dashboard')]"></span>
           </NuxtLink>
         </div>
 
@@ -175,6 +197,10 @@ onMounted(hydrateUser)
                 <NuxtLink to="/my/orders" :class="['flex items-center gap-2 px-3 py-2 rounded-xl text-sm transition', menuClass('/my/orders')]" @click="closeProfile">
                   <span class="w-2 h-2 rounded-full bg-orange"></span>
                   My Orders
+                </NuxtLink>
+                <NuxtLink to="/pricing-plans" :class="['flex items-center gap-2 px-3 py-2 rounded-xl text-sm transition', menuClass('/pricing-plans')]" @click="closeProfile">
+                  <span class="w-2 h-2 rounded-full bg-cyan-400"></span>
+                  Pricing Plans
                 </NuxtLink>
                 <NuxtLink to="/dashboard/profile" :class="['flex items-center gap-2 px-3 py-2 rounded-xl text-sm transition', menuClass('/dashboard/profile')]" @click="closeProfile">
                   <span class="w-2 h-2 rounded-full bg-slate-300"></span>

@@ -37,16 +37,16 @@ onMounted(fetchExams)
 </script>
 
 <template>
-  <div class="min-h-[calc(100vh-80px)] bg-offwhite">
+  <div class="min-h-[calc(100vh-80px)] bg-[radial-gradient(circle_at_15%_10%,#e0f2fe_0%,#f8fafc_35%,#f8fafc_100%)]">
     <div class="container mx-auto px-4 py-12">
       <div class="max-w-6xl mx-auto space-y-8">
         <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
           <div>
-            <p class="text-xs font-bold uppercase tracking-widest text-orange">Listening</p>
-            <h1 class="text-3xl font-bold text-navy">Listening Mock Tests</h1>
-            <p class="text-sm text-slate-500">Choose a test to see instructions before starting.</p>
+            <p class="text-xs font-bold uppercase tracking-widest text-cyan-700">Listening</p>
+            <h1 class="text-3xl font-black text-slate-900">Listening Mock Tests</h1>
+            <p class="text-sm text-slate-500">Choose an exam card and read instructions before starting your test.</p>
           </div>
-          <NuxtLink to="/dashboard" class="px-4 py-2 text-sm font-semibold text-navy border border-gray-200 rounded-xl hover:border-navy hover:bg-slate-50 transition">Back to Dashboard</NuxtLink>
+          <NuxtLink to="/dashboard" class="px-4 py-2 text-sm font-semibold text-slate-700 border border-gray-200 rounded-xl hover:border-slate-900 hover:bg-white transition">Back to Dashboard</NuxtLink>
         </div>
 
         <div v-if="errorMessage" class="bg-rose-50 border border-rose-200 text-rose-900 rounded-2xl p-4 text-sm">
@@ -61,13 +61,18 @@ onMounted(fetchExams)
           </div>
 
           <div v-else class="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <div v-for="exam in exams" :key="String(exam.id || exam.unique_id)" class="bg-white rounded-3xl border border-gray-100 p-6 shadow-sm hover:shadow-lg transition">
+            <div
+              v-for="exam in exams"
+              :key="String(exam.id || exam.unique_id)"
+              class="relative overflow-hidden bg-white rounded-3xl border border-gray-100 p-6 shadow-sm hover:-translate-y-1 hover:shadow-lg transition"
+            >
+              <div class="pointer-events-none absolute -right-8 -top-8 w-24 h-24 rounded-full bg-cyan-100/50 blur-2xl"></div>
               <div class="flex items-start justify-between gap-4">
                 <div>
                   <p class="text-xs text-slate-400">Listening Exam</p>
-                  <h3 class="text-lg font-bold text-navy">{{ exam.title }}</h3>
+                  <h3 class="text-lg font-black text-slate-900">{{ exam.title }}</h3>
                 </div>
-                <span class="text-xs font-bold px-2 py-1 rounded-full bg-blue-100 text-blue-700">{{ exam.duration || 40 }} mins</span>
+                <span class="text-xs font-bold px-2 py-1 rounded-full bg-cyan-100 text-cyan-700">{{ exam.duration || 40 }} mins</span>
               </div>
 
               <div class="mt-4 grid grid-cols-2 gap-4">
@@ -82,8 +87,8 @@ onMounted(fetchExams)
               </div>
 
               <div class="mt-5">
-                <NuxtLink :to="`/exam/listening/${exam.unique_id || exam.id}`" class="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-navy rounded-xl hover:bg-navy-light transition">
-                  View Instructions
+                <NuxtLink :to="`/exam/listening/${exam.unique_id || exam.id}`" class="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-slate-900 rounded-xl hover:bg-slate-700 transition">
+                  View Instruction
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
                 </NuxtLink>
               </div>

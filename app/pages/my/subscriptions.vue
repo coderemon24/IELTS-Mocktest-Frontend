@@ -96,7 +96,7 @@ onMounted(fetchSubscriptions)
           </div>
           <div class="flex gap-2">
             <NuxtLink to="/my/orders" class="px-4 py-2 text-sm font-semibold text-navy border border-gray-200 rounded-xl hover:border-navy hover:bg-slate-50 transition">My Orders</NuxtLink>
-            <NuxtLink to="/" class="px-4 py-2 text-sm font-semibold text-white bg-navy rounded-xl hover:bg-navy-light transition">Browse Packages</NuxtLink>
+            <NuxtLink to="/pricing-plans" class="px-4 py-2 text-sm font-semibold text-white bg-navy rounded-xl hover:bg-navy-light transition">Browse Packages</NuxtLink>
           </div>
         </div>
 
@@ -116,7 +116,7 @@ onMounted(fetchSubscriptions)
 
           <div v-else-if="subscriptions.length === 0" class="bg-white rounded-3xl border border-gray-100 p-8 text-center">
             <p class="text-slate-500">No subscriptions found.</p>
-            <NuxtLink to="/" class="inline-flex mt-4 px-4 py-2 text-sm font-semibold text-white bg-navy rounded-xl hover:bg-navy-light transition">Buy a Package</NuxtLink>
+            <NuxtLink to="/pricing-plans" class="inline-flex mt-4 px-4 py-2 text-sm font-semibold text-white bg-navy rounded-xl hover:bg-navy-light transition">Buy a Package</NuxtLink>
           </div>
 
           <div v-else class="grid md:grid-cols-2 gap-4">
@@ -158,7 +158,7 @@ onMounted(fetchSubscriptions)
               </div>
 
               <div class="mt-5 flex gap-2">
-                <NuxtLink to="/" class="px-3 py-2 text-xs font-bold rounded-lg border border-gray-200 text-slate-600 hover:border-navy hover:text-navy transition">
+                <NuxtLink to="/pricing-plans" class="px-3 py-2 text-xs font-bold rounded-lg border border-gray-200 text-slate-600 hover:border-navy hover:text-navy transition">
                   View Packages
                 </NuxtLink>
                 <NuxtLink :to="`/checkout/${sub.plan?.id}`" class="px-3 py-2 text-xs font-bold rounded-lg bg-navy text-white hover:bg-navy-light transition">
