@@ -1,35 +1,9 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-import Editor from '@tinymce/tinymce-vue'
-import 'tinymce/tinymce'
-import 'tinymce/icons/default'
-import 'tinymce/themes/silver'
-import 'tinymce/models/dom'
-import 'tinymce/plugins/advlist'
-import 'tinymce/plugins/anchor'
-import 'tinymce/plugins/autolink'
-import 'tinymce/plugins/charmap'
-import 'tinymce/plugins/code'
-import 'tinymce/plugins/codesample'
-import 'tinymce/plugins/directionality'
-import 'tinymce/plugins/emoticons'
-import 'tinymce/plugins/fullscreen'
-import 'tinymce/plugins/help'
-import 'tinymce/plugins/image'
-import 'tinymce/plugins/insertdatetime'
-import 'tinymce/plugins/link'
-import 'tinymce/plugins/lists'
-import 'tinymce/plugins/media'
-import 'tinymce/plugins/nonbreaking'
-import 'tinymce/plugins/pagebreak'
-import 'tinymce/plugins/preview'
-import 'tinymce/plugins/quickbars'
-import 'tinymce/plugins/searchreplace'
-import 'tinymce/plugins/table'
-import 'tinymce/plugins/template'
-import 'tinymce/plugins/visualchars'
-import 'tinymce/plugins/visualblocks'
-import 'tinymce/plugins/wordcount'
+import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
+
+type SummernoteJQuery = {
+  summernote: (arg1?: any, arg2?: any) => any
+}
 
 const props = defineProps<{
   modelValue: string | null
@@ -41,58 +15,144 @@ const emit = defineEmits<{
   (e: 'update:modelValue', value: string | null): void
 }>()
 
-const value = computed({
-  get: () => props.modelValue ?? '',
-  set: (val: string) => emit('update:modelValue', val || null),
+const editorRef = ref<HTMLElement | null>(null)
+let $editor: SummernoteJQuery | null = null
+let syncingFromModel = false
+
+const JQUERY_SRC = 'https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js'
+const SUMMERNOTE_CSS =
+  'https://cdn.jsdelivr.net/npm/summernote@0.9.0/dist/summernote-lite.min.css'
+const SUMMERNOTE_JS =
+  'https://cdn.jsdelivr.net/npm/summernote@0.9.0/dist/summernote-lite.min.js'
+
+const loadScript = (src: string) =>
+  new Promise<void>((resolve, reject) => {
+    const existing = document.querySelector(`script[src="${src}"]`) as
+      | HTMLScriptElement
+      | null
+    if (existing?.dataset.loaded === 'true') {
+      resolve()
+      return
+    }
+    if (existing) {
+      existing.addEventListener('load', () => resolve(), { once: true })
+      existing.addEventListener('error', () => reject(new Error(`Failed: ${src}`)), {
+        once: true,
+      })
+      return
+    }
+
+    const el = document.createElement('script')
+    el.src = src
+    el.async = true
+    el.addEventListener(
+      'load',
+      () => {
+        el.dataset.loaded = 'true'
+        resolve()
+      },
+      { once: true },
+    )
+    el.addEventListener('error', () => reject(new Error(`Failed: ${src}`)), {
+      once: true,
+    })
+    document.head.appendChild(el)
+  })
+
+const loadCss = (href: string) => {
+  const existing = document.querySelector(`link[href="${href}"]`)
+  if (existing) return
+  const el = document.createElement('link')
+  el.rel = 'stylesheet'
+  el.href = href
+  document.head.appendChild(el)
+}
+
+const htmlToValue = (html: string) => {
+  const temp = document.createElement('div')
+  temp.innerHTML = html
+  const text = (temp.textContent ?? '').replace(/\u00a0/g, ' ').trim()
+  return text ? html : null
+}
+
+const initEditor = () => {
+  if (!editorRef.value) return
+  const w = window as any
+  const $ = w.jQuery || w.$
+  if (!$) return
+
+  $editor = $(editorRef.value) as SummernoteJQuery
+  $editor.summernote({
+    height: props.height ?? 180,
+    placeholder: props.placeholder ?? 'Write instructions...',
+    toolbar: [
+      ['style', ['bold', 'italic', 'underline', 'clear']],
+      ['para', ['ul', 'ol', 'paragraph']],
+      ['insert', ['link']],
+      ['view', ['codeview']],
+    ],
+    callbacks: {
+      onChange: (contents: string) => {
+        if (syncingFromModel) return
+        emit('update:modelValue', htmlToValue(contents))
+      },
+    },
+  })
+
+  syncingFromModel = true
+  $editor.summernote('code', props.modelValue ?? '')
+  syncingFromModel = false
+}
+
+watch(
+  () => props.modelValue,
+  (val) => {
+    if (!$editor) return
+    const next = val ?? ''
+    const current = ($editor.summernote('code') ?? '') as string
+    if (current === next) return
+    syncingFromModel = true
+    $editor.summernote('code', next)
+    syncingFromModel = false
+  },
+)
+
+onMounted(async () => {
+  if (!process.client) return
+  loadCss(SUMMERNOTE_CSS)
+  await loadScript(JQUERY_SRC)
+  await loadScript(SUMMERNOTE_JS)
+  initEditor()
 })
 
-const editorInit = computed(() => ({
-  height: props.height ?? 180,
-  menubar: 'file edit view insert format tools table help',
-  statusbar: true,
-  branding: false,
-  promotion: false,
-  plugins: [
-    'advlist',
-    'autolink',
-    'lists',
-    'link',
-    'image',
-    'charmap',
-    'codesample',
-    'directionality',
-    'emoticons',
-    'preview',
-    'anchor',
-    'searchreplace',
-    'visualchars',
-    'visualblocks',
-    'code',
-    'fullscreen',
-    'insertdatetime',
-    'media',
-    'nonbreaking',
-    'pagebreak',
-    'quickbars',
-    'table',
-    'template',
-    'help',
-    'wordcount',
-  ],
-  toolbar:
-    'undo redo | blocks fontfamily fontsize | bold italic underline strikethrough | ' +
-    'alignleft aligncenter alignright alignjustify | outdent indent | numlist bullist | ' +
-    'forecolor backcolor removeformat | ltr rtl | link image media table | ' +
-    'charmap emoticons pagebreak nonbreaking | insertdatetime codesample | ' +
-    'preview visualblocks visualchars code fullscreen',
-  placeholder: props.placeholder ?? 'Write instructions...',
-  content_style:
-    'body { font-family: Inter, Arial, sans-serif; font-size: 14px; }',
-}))
+onBeforeUnmount(() => {
+  if ($editor) {
+    $editor.summernote('destroy')
+    $editor = null
+  }
+})
 </script>
 
 <template>
   <ClientOnly>
-    <Editor v-model="value" :init="editorInit" />
+    <div ref="editorRef"></div>
   </ClientOnly>
 </template>
+
+<style>
+.note-editor .note-editable ul {
+  list-style: disc;
+  margin: 0.5rem 0;
+  padding-left: 1.5rem;
+}
+
+.note-editor .note-editable ol {
+  list-style: decimal;
+  margin: 0.5rem 0;
+  padding-left: 1.5rem;
+}
+
+.note-editor .note-editable li {
+  display: list-item;
+}
+</style>

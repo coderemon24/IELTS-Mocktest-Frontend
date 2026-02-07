@@ -55,6 +55,16 @@ const syncActiveMenu = (path: string) => {
     return
   }
 
+  if (
+    path.startsWith('/admin/orders') ||
+    path.startsWith('/admin/payments') ||
+    path.startsWith('/admin/subscriptions')
+  ) {
+    activeSubMenu.value = 'Commerce'
+    activeNestedSubMenu.value = null
+    return
+  }
+
   if (path.startsWith('/admin/users')) {
     activeSubMenu.value = 'Users'
     activeNestedSubMenu.value = null
